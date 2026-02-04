@@ -28,7 +28,8 @@ export default function Initiatives() {
     try {
       const res = await fetch('/api/dashboard/quarters', { headers: getAuthHeader() })
       const data = await res.json()
-      setQuarters(data)
+      // Add "All Quarters" option at the beginning
+      setQuarters(['All Quarters', ...data])
       if (data.length > 0) setSelectedQuarter(data[0])
     } catch (error) {
       console.error('Failed to fetch quarters:', error)
@@ -38,7 +39,11 @@ export default function Initiatives() {
   const fetchInitiatives = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/initiatives?quarter=${encodeURIComponent(selectedQuarter)}`, { headers: getAuthHeader() })
+      // If "All Quarters" selected, don't filter by quarter
+      const url = selectedQuarter === 'All Quarters'
+        ? '/api/initiatives'
+        : `/api/initiatives?quarter=${encodeURIComponent(selectedQuarter)}`
+      const res = await fetch(url, { headers: getAuthHeader() })
       const data = await res.json()
       setInitiatives(data)
     } catch (error) {
