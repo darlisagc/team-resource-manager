@@ -1,0 +1,27 @@
+# =============================================================================
+# Docker Compose for Team Resource Manager
+# Development configuration with hot reload
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: team-resource-manager-dev
+    ports:
+      - "3010:3010"  # Vite dev server
+      - "3011:3011"  # Express API
+    environment:
+      - NODE_ENV=development
+      - PORT=3011
+      - VITE_PORT=3010
+      - JWT_SECRET=dev-secret-key
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Exclude node_modules (use container's version)
+      - /app/node_modules
+      # Persist SQLite database
+      - ./data:/app/data
+    command: npm run dev

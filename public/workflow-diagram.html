@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Resource Manager - Workflow Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+      min-height: 100vh;
+      font-family: 'Space Mono', monospace;
+      color: #f0f0f0;
+      padding: 40px;
+      overflow-x: auto;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #FFE81F;
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(255, 232, 31, 0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #4BD5EE;
+      margin-bottom: 40px;
+      font-size: 0.9rem;
+    }
+
+    .workflow-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Section Headers */
+    .section {
+      margin-bottom: 50px;
+    }
+
+    .section-header {
+      font-family: 'Orbitron', sans-serif;
+      color: #FFE81F;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(255, 232, 31, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-icon {
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 232, 31, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    /* Flow Diagram */
+    .flow {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .flow-vertical {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    /* Nodes */
+    .node {
+      background: rgba(26, 26, 46, 0.9);
+      border: 2px solid #4a4a4a;
+      border-radius: 12px;
+      padding: 15px 20px;
+      min-width: 160px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .node:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .node-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      margin-bottom: 5px;
+    }
+
+    .node-desc {
+      font-size: 0.7rem;
+      color: #888;
+    }
+
+    /* Node Types */
+    .node-start {
+      border-color: #00FF00;
+      background: linear-gradient(135deg, rgba(0, 255, 0, 0.1), rgba(26, 26, 46, 0.9));
+    }
+    .node-start .node-title { color: #00FF00; }
+
+    .node-action {
+      border-color: #4BD5EE;
+      background: linear-gradient(135deg, rgba(75, 213, 238, 0.1), rgba(26, 26, 46, 0.9));
+    }
+    .node-action .node-title { color: #4BD5EE; }
+
+    .node-decision {
+      border-color: #FFE81F;
+      background: linear-gradient(135deg, rgba(255, 232, 31, 0.1), rgba(26, 26, 46, 0.9));
+      transform: rotate(0deg);
+    }
+    .node-decision .node-title { color: #FFE81F; }
+
+    .node-alert {
+      border-color: #FF2D2D;
+      background: linear-gradient(135deg, rgba(255, 45, 45, 0.1), rgba(26, 26, 46, 0.9));
+    }
+    .node-alert .node-title { color: #FF2D2D; }
+
+    .node-page {
+      border-color: #9B59B6;
+      background: linear-gradient(135deg, rgba(155, 89, 182, 0.1), rgba(26, 26, 46, 0.9));
+    }
+    .node-page .node-title { color: #9B59B6; }
+
+    .node-end {
+      border-color: #00FF00;
+      border-style: dashed;
+    }
+    .node-end .node-title { color: #00FF00; }
+
+    .node-new {
+      border-color: #E91E63;
+      background: linear-gradient(135deg, rgba(233, 30, 99, 0.1), rgba(26, 26, 46, 0.9));
+    }
+    .node-new .node-title { color: #E91E63; }
+
+    /* Arrows */
+    .arrow {
+      color: #4a4a4a;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arrow-down {
+      transform: rotate(90deg);
+    }
+
+    .arrow-label {
+      font-size: 0.65rem;
+      color: #FFE81F;
+      background: rgba(255, 232, 31, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin: 0 5px;
+    }
+
+    /* Time Badge */
+    .time-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #FFE81F;
+      color: #0a0a0a;
+      font-size: 0.6rem;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    /* New Badge */
+    .new-badge {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      background: #E91E63;
+      color: #fff;
+      font-size: 0.55rem;
+      padding: 3px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    /* Frequency Badge */
+    .freq-badge {
+      display: inline-block;
+      background: rgba(75, 213, 238, 0.2);
+      color: #4BD5EE;
+      font-size: 0.65rem;
+      padding: 3px 10px;
+      border-radius: 15px;
+      margin-left: 10px;
+    }
+
+    /* Parallel Container */
+    .parallel-container {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      border: 2px dashed rgba(75, 213, 238, 0.3);
+      border-radius: 15px;
+      background: rgba(75, 213, 238, 0.05);
+    }
+
+    .parallel-label {
+      position: absolute;
+      top: -12px;
+      left: 20px;
+      background: #1a1a2e;
+      color: #4BD5EE;
+      font-size: 0.7rem;
+      padding: 2px 10px;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(26, 26, 46, 0.5);
+      border-radius: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      border: 2px solid;
+    }
+
+    /* Swimlanes for Daily */
+    .swimlane {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .swimlane-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      color: #FFE81F;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      text-align: center;
+      padding: 10px;
+      background: rgba(255, 232, 31, 0.1);
+      border-radius: 10px;
+    }
+
+    .swimlane-content {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    /* Hierarchy Display */
+    .hierarchy {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 15px;
+      border: 2px solid rgba(255, 232, 31, 0.3);
+      border-radius: 10px;
+      background: rgba(255, 232, 31, 0.05);
+    }
+
+    .hierarchy-level {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 0;
+    }
+
+    .hierarchy-level:nth-child(2) { padding-left: 20px; }
+    .hierarchy-level:nth-child(3) { padding-left: 40px; }
+
+    .hierarchy-icon {
+      font-size: 0.8rem;
+    }
+
+    .hierarchy-text {
+      font-size: 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .flow {
+        flex-direction: column;
+        align-items: center;
+      }
+      .arrow {
+        transform: rotate(90deg);
+      }
+      .parallel-container {
+        flex-direction: column;
+      }
+      .swimlane {
+        grid-template-columns: 1fr;
+      }
+      .swimlane-label {
+        writing-mode: horizontal-tb;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="workflow-container">
+    <h1>GALACTIC RESOURCE COMMAND</h1>
+    <p class="subtitle">Team Resource Manager - Operations Workflow</p>
+
+    <!-- INITIAL SETUP -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">1</div>
+        INITIAL SETUP
+        <span class="freq-badge">Quarterly / One-time</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">START QUARTER</div>
+          <div class="node-desc">New Q begins</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">10m</span>
+          <div class="node-title">SETTINGS</div>
+          <div class="node-desc">Open Settings page</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="flow-vertical" style="position: relative;">
+          <div class="parallel-container">
+            <span class="parallel-label">Run in Parallel</span>
+            <div class="node node-action">
+              <div class="node-title">SYNC CALENDAR</div>
+              <div class="node-desc">Import PTO & holidays</div>
+            </div>
+            <div class="node node-action">
+              <div class="node-title">IMPORT GOALS</div>
+              <div class="node-desc">Leapsome OKRs</div>
+            </div>
+            <div class="node node-action">
+              <div class="node-title">IMPORT TASKS</div>
+              <div class="node-desc">Miro board items</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">VERIFY HOURS</div>
+          <div class="node-desc">Team member configs</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">LINK TASKS</div>
+          <div class="node-desc">Connect to goals</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">15m</span>
+          <div class="node-title">INITIATIVES</div>
+          <div class="node-desc">Create PMO projects</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">ASSIGN ROLES</div>
+          <div class="node-desc">Lead, Contributor, Support</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">SETUP COMPLETE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OKR TRACKING WORKFLOW (NEW) -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">2</div>
+        OKR TRACKING WORKFLOW
+        <span class="freq-badge">Weekly / As Needed</span>
+        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
+      </div>
+
+      <!-- Hierarchy Display -->
+      <div style="display: flex; justify-content: center; margin-bottom: 30px;">
+        <div class="hierarchy">
+          <div class="hierarchy-level">
+            <span class="hierarchy-icon">🎯</span>
+            <span class="hierarchy-text" style="color: #FFE81F; font-weight: bold;">GOAL</span>
+            <span class="hierarchy-text" style="color: #888;">- Strategic objective (e.g., "Drive Java Ecosystem Adoption")</span>
+          </div>
+          <div class="hierarchy-level">
+            <span class="hierarchy-icon">📊</span>
+            <span class="hierarchy-text" style="color: #4BD5EE; font-weight: bold;">KEY RESULT</span>
+            <span class="hierarchy-text" style="color: #888;">- Measurable outcome (e.g., "0/12 ecosystems integrated")</span>
+          </div>
+          <div class="hierarchy-level">
+            <span class="hierarchy-icon">🚀</span>
+            <span class="hierarchy-text" style="color: #9B59B6; font-weight: bold;">INITIATIVE</span>
+            <span class="hierarchy-text" style="color: #888;">- Work item (e.g., "Implement Python SDK")</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">UPDATE OKRs</div>
+          <div class="node-desc">Track progress</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="new-badge">NEW</span>
+          <span class="time-badge">2m</span>
+          <div class="node-title">GOALS PAGE</div>
+          <div class="node-desc">View all goals</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">CLICK GOAL</div>
+          <div class="node-desc">Opens detail page</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">GOAL DETAIL</div>
+          <div class="node-desc">Key Results & Initiatives</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">CLICK STATUS</div>
+          <div class="node-desc">Opens update modal</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-new">
+          <span class="time-badge">1m</span>
+          <div class="node-title">UPDATE MODAL</div>
+          <div class="node-desc">Status + Progress + Comment</div>
+        </div>
+      </div>
+
+      <!-- Update Modal Details -->
+      <div style="margin-top: 30px;">
+        <div class="flow">
+          <div class="node node-new" style="min-width: 200px;">
+            <div class="node-title">KEY RESULT UPDATE</div>
+            <div class="node-desc" style="text-align: left; margin-top: 10px;">
+              • Select status<br>
+              • Update progress (0→5/12)<br>
+              • Quick buttons: +1, +2, +5<br>
+              • Add comment/note<br>
+              • Add related link<br>
+              • View update history
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">SAVE UPDATE</div>
+            <div class="node-desc">Recorded with timestamp</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">HISTORY TRACKED</div>
+            <div class="node-desc">Full audit trail</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-end">
+            <div class="node-title">PROGRESS SAVED</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Initiative Update Flow -->
+      <div style="margin-top: 30px;">
+        <div class="flow">
+          <div class="node node-page">
+            <div class="node-title">EXPAND KEY RESULT</div>
+            <div class="node-desc">Click to show initiatives</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-new" style="min-width: 200px;">
+            <div class="node-title">INITIATIVE UPDATE</div>
+            <div class="node-desc" style="text-align: left; margin-top: 10px;">
+              • Select status<br>
+              • Add comment/note<br>
+              • Add PR/Jira link<br>
+              • View update history
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">SAVE UPDATE</div>
+            <div class="node-desc">Linked to initiative</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-end">
+            <div class="node-title">INITIATIVE UPDATED</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY WORKFLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">3</div>
+        DAILY WORKFLOW
+        <span class="freq-badge">Every Day</span>
+      </div>
+
+      <div class="swimlane">
+        <div class="swimlane-label">MORNING CHECK</div>
+        <div class="swimlane-content">
+          <div class="node node-start">
+            <div class="node-title">START DAY</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-page">
+            <span class="time-badge">2m</span>
+            <div class="node-title">DASHBOARD</div>
+            <div class="node-desc">Check utilization</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-decision">
+            <div class="node-title">ALERTS?</div>
+            <div class="node-desc">Over/under allocated</div>
+          </div>
+
+          <div class="arrow">
+            <span class="arrow-label">Yes</span>→
+          </div>
+
+          <div class="node node-alert">
+            <div class="node-title">REBALANCE</div>
+            <div class="node-desc">Adjust assignments</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="swimlane">
+        <div class="swimlane-label">OKR CHECK</div>
+        <div class="swimlane-content">
+          <div class="node node-page">
+            <span class="time-badge">5m</span>
+            <div class="node-title">GOALS PAGE</div>
+            <div class="node-desc">Review OKR progress</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-decision">
+            <div class="node-title">PROGRESS?</div>
+            <div class="node-desc">Any updates to log?</div>
+          </div>
+
+          <div class="arrow">
+            <span class="arrow-label">Yes</span>→
+          </div>
+
+          <div class="node node-action">
+            <span class="new-badge">NEW</span>
+            <div class="node-title">UPDATE KR/INIT</div>
+            <div class="node-desc">Log progress + comment</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="swimlane">
+        <div class="swimlane-label">AS NEEDED</div>
+        <div class="swimlane-content">
+          <div class="node node-decision">
+            <div class="node-title">NEW WORK?</div>
+          </div>
+
+          <div class="arrow">
+            <span class="arrow-label">Yes</span>→
+          </div>
+
+          <div class="node node-action">
+            <div class="node-title">CREATE TASK</div>
+            <div class="node-desc">Or re-import</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">LINK TO GOAL</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">ASSIGN TEAM</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">SET PRIORITY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY BRIEFING -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">4</div>
+        WEEKLY BRIEFING
+        <span class="freq-badge">Friday / Monday</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">WEEK END/START</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">15m</span>
+          <div class="node-title">WEEKLY BRIEFING</div>
+          <div class="node-desc">Kanban board view</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">CHECK COMPLETED</div>
+          <div class="node-desc">Tasks done this week</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">IDENTIFY BLOCKED</div>
+          <div class="node-desc">Plan resolution</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">5m</span>
+          <div class="node-title">GOALS PAGE</div>
+          <div class="node-desc">Update OKR progress</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">LOG PROGRESS</div>
+          <div class="node-desc">Update KRs with comments</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <div class="node-title">TEAM OVERVIEW</div>
+          <div class="node-desc">Check workload balance</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">WEEK REVIEWED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PMO EXPORT WORKFLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">5</div>
+        PMO EXPORT WORKFLOW
+        <span class="freq-badge">Monthly / Quarterly</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">PMO REPORTING</div>
+          <div class="node-desc">End of period</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">10m</span>
+          <div class="node-title">PMO EXPORT</div>
+          <div class="node-desc">Open export page</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SET DATE RANGE</div>
+          <div class="node-desc">Quarter or custom</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">APPLY FILTERS</div>
+          <div class="node-desc">Team, priority</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">PREVIEW EXPORT</div>
+          <div class="node-desc">Verify data</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-decision">
+          <div class="node-title">DATA CORRECT?</div>
+        </div>
+
+        <div class="arrow">
+          <span class="arrow-label">Yes</span>→
+        </div>
+
+        <div class="flow-vertical">
+          <div class="node node-action" style="border-color: #4BD5EE;">
+            <div class="node-title" style="color: #4BD5EE;">EXPORT CSV</div>
+            <div class="node-desc">Spreadsheet format</div>
+          </div>
+          <div style="color: #888; font-size: 0.8rem;">OR</div>
+          <div class="node node-action" style="border-color: #FFE81F;">
+            <div class="node-title" style="color: #FFE81F;">EXPORT JSON</div>
+            <div class="node-desc">Data interchange</div>
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SAVE CONFIG</div>
+          <div class="node-desc">Reuse next time</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">REPORT DELIVERED</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS FLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">6</div>
+        OKR STATUS LIFECYCLE
+        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-action" style="border-color: #888;">
+          <div class="node-title" style="color: #888;">DRAFT</div>
+          <div class="node-desc">Not started</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action" style="border-color: #4BD5EE;">
+          <div class="node-title" style="color: #4BD5EE;">ACTIVE</div>
+          <div class="node-desc">Ready to work</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action" style="border-color: #FFE81F;">
+          <div class="node-title" style="color: #FFE81F;">IN-PROGRESS</div>
+          <div class="node-desc">Work underway</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action" style="border-color: #00FF00;">
+          <div class="node-title" style="color: #00FF00;">COMPLETED</div>
+          <div class="node-desc">Done!</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; text-align: center; color: #888; font-size: 0.8rem;">
+        Each status change is tracked with: timestamp, comment, and optional link (PR, Jira, docs)
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #00FF00; background: rgba(0,255,0,0.1);"></div>
+        <span>Start / End</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #4BD5EE; background: rgba(75,213,238,0.1);"></div>
+        <span>Action</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #FFE81F; background: rgba(255,232,31,0.1);"></div>
+        <span>Decision</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #FF2D2D; background: rgba(255,45,45,0.1);"></div>
+        <span>Alert / Issue</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #9B59B6; background: rgba(155,89,182,0.1);"></div>
+        <span>App Page</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="border-color: #E91E63; background: rgba(233,30,99,0.1);"></div>
+        <span>New Feature</span>
+      </div>
+      <div class="legend-item">
+        <div style="background: #FFE81F; color: #0a0a0a; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; font-weight: bold;">5m</div>
+        <span>Time Estimate</span>
+      </div>
+      <div class="legend-item">
+        <div style="background: #E91E63; color: #fff; font-size: 0.55rem; padding: 3px 6px; border-radius: 10px; font-weight: bold;">NEW</div>
+        <span>New Feature</span>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

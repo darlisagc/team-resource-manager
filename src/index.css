@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sw-black: #0a0a0a;
+  --sw-dark: #1a1a2e;
+  --sw-darker: #0f0f1a;
+  --sw-gold: #FF6B35;
+  --sw-blue: #4BD5EE;
+  --sw-red: #FF2D2D;
+  --sw-green: #00FF00;
+  --sw-gray: #4a4a4a;
+  --sw-light: #f0f0f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Space Mono', monospace;
+  background: linear-gradient(135deg, var(--sw-black) 0%, var(--sw-dark) 50%, var(--sw-darker) 100%);
+  color: var(--sw-light);
+  min-height: 100vh;
+}
+
+/* Star field background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, white, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, white, transparent),
+    radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 230px 80px, white, transparent),
+    radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 370px 50px, white, transparent),
+    radial-gradient(2px 2px at 450px 200px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 520px 100px, white, transparent),
+    radial-gradient(2px 2px at 600px 180px, rgba(255,255,255,0.9), transparent);
+  background-repeat: repeat;
+  background-size: 650px 250px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+/* Hologram card effect */
+@layer components {
+  .hologram-card {
+    @apply bg-sw-dark/80 backdrop-blur-sm border border-sw-gold/30 rounded-lg;
+    box-shadow:
+      0 0 10px rgba(255, 107, 53, 0.1),
+      inset 0 0 20px rgba(75, 213, 238, 0.05);
+  }
+
+  .hologram-card:hover {
+    @apply border-sw-gold/50;
+    box-shadow:
+      0 0 20px rgba(255, 107, 53, 0.2),
+      inset 0 0 30px rgba(75, 213, 238, 0.1);
+  }
+
+  /* Lightsaber progress bar */
+  .lightsaber-bar {
+    @apply h-2 rounded-full overflow-hidden bg-sw-gray/30;
+  }
+
+  .lightsaber-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .lightsaber-green {
+    @apply bg-sw-green;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  }
+
+  .lightsaber-gold {
+    @apply bg-sw-gold;
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+  }
+
+  .lightsaber-red {
+    @apply bg-sw-red;
+    box-shadow: 0 0 15px rgba(255, 45, 45, 0.5);
+  }
+
+  .lightsaber-blue {
+    @apply bg-sw-blue;
+    box-shadow: 0 0 15px rgba(75, 213, 238, 0.5);
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply px-4 py-2 bg-sw-gold text-sw-black font-orbitron font-bold rounded
+           hover:bg-sw-gold/80 transition-all duration-200 uppercase tracking-wider text-sm;
+    box-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-transparent border border-sw-blue text-sw-blue font-orbitron
+           font-semibold rounded hover:bg-sw-blue/20 transition-all duration-200 uppercase tracking-wider text-sm;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-sw-red/20 border border-sw-red text-sw-red font-orbitron
+           font-semibold rounded hover:bg-sw-red/30 transition-all duration-200 uppercase tracking-wider text-sm;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full px-4 py-2 bg-sw-darker border border-sw-gray/50 rounded
+           text-sw-light placeholder-sw-gray focus:border-sw-gold focus:outline-none
+           focus:ring-1 focus:ring-sw-gold/50 transition-all duration-200;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply px-2 py-1 rounded text-xs font-orbitron uppercase tracking-wide;
+  }
+
+  .badge-success {
+    @apply bg-sw-green/20 text-sw-green border border-sw-green/30;
+  }
+
+  .badge-warning {
+    @apply bg-sw-gold/20 text-sw-gold border border-sw-gold/30;
+  }
+
+  .badge-danger {
+    @apply bg-sw-red/20 text-sw-red border border-sw-red/30;
+  }
+
+  .badge-info {
+    @apply bg-sw-blue/20 text-sw-blue border border-sw-blue/30;
+  }
+
+  /* Status dot */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-active {
+    @apply bg-sw-green;
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+    animation: pulse 2s infinite;
+  }
+
+  .status-warning {
+    @apply bg-sw-gold;
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);
+  }
+
+  .status-danger {
+    @apply bg-sw-red;
+    box-shadow: 0 0 8px rgba(255, 45, 45, 0.6);
+    animation: pulse 1s infinite;
+  }
+
+  /* Table styles */
+  .data-table {
+    @apply w-full border-collapse;
+  }
+
+  .data-table th {
+    @apply text-left py-3 px-4 bg-sw-darker/50 text-sw-gold font-orbitron
+           text-sm uppercase tracking-wider border-b border-sw-gold/20;
+  }
+
+  .data-table td {
+    @apply py-3 px-4 border-b border-sw-gray/20;
+  }
+
+  .data-table tr:hover td {
+    @apply bg-sw-gold/5;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--sw-darker);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--sw-gray);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--sw-gold);
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(255, 107, 53, 0.3);
+    color: white;
+  }
+}
+
+/* Animations */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Recharts custom styling */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 107, 53, 0.1);
+}
+
+.recharts-text {
+  fill: var(--sw-light);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--sw-dark) !important;
+  border: 1px solid var(--sw-gold) !important;
+  border-radius: 4px;
+}
+
+.recharts-legend-item-text {
+  color: var(--sw-light) !important;
+}
