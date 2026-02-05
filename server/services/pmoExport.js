@@ -31,54 +31,103 @@ function formatWeekLabel(dateStr) {
   return `${day}/${month}`
 }
 
-// Helper: Get month name from date
-function getMonthName(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleString('en-US', { month: 'long' })
-}
+/**
+ * Generate export data from weekly check-ins (actual work done)
+ */
+function generateFromCheckins(options) {
+  const { startDate, endDate, team, priority } = options
+  const weeks = getWeeksBetween(startDate, endDate)
 
-// Helper: Get month key (YYYY-MM)
-function getMonthKey(dateStr) {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
+  let sql = `
+    SELECT DISTINCT
+      wci.initiative_id,
+      wci.key_result_id,
+      wci.time_allocation_pct,
+      wc.week_start,
+      wc.team_member_id,
+      tm.name as member_name,
+      tm.team as member_team,
+      i.name as initiative_name,
+      i.project_priority as init_priority,
+      i.team as initiative_team,
+      ia.role as init_role,
+      kr.title as kr_title,
+      g.title as goal_title,
+      g.project_priority as goal_priority
+    FROM weekly_checkin_items wci
+    JOIN weekly_checkins wc ON wci.checkin_id = wc.id
+    JOIN team_members tm ON wc.team_member_id = tm.id
+    LEFT JOIN initiatives i ON wci.initiative_id = i.id
+    LEFT JOIN initiative_assignments ia ON i.id = ia.initiative_id AND ia.team_member_id = tm.id
+    LEFT JOIN key_results kr ON wci.key_result_id = kr.id
+    LEFT JOIN goals g ON kr.goal_id = g.id
+    WHERE wc.week_start >= ? AND wc.week_start <= ?
+    AND wc.status = 'submitted'
+    AND wci.time_allocation_pct > 0
+  `
+  const params = [getMonday(startDate), getMonday(endDate)]
 
-// Calculate monthly allocation average
-function calculateMonthlyAverage(weeklyData, monthKey) {
-  const monthWeeks = Object.entries(weeklyData).filter(([week]) => getMonthKey(week) === monthKey)
-  if (monthWeeks.length === 0) return 0
+  if (team) {
+    sql += ' AND (i.team = ? OR tm.team = ? OR g.team = ?)'
+    params.push(team, team, team)
+  }
+  if (priority) {
+    sql += ' AND (i.project_priority = ? OR g.project_priority = ?)'
+    params.push(priority, priority)
+  }
 
-  const total = monthWeeks.reduce((sum, [, value]) => sum + (value || 0), 0)
-  return Math.round((total / monthWeeks.length) * 10) / 10
-}
+  sql += ' ORDER BY tm.name, i.name, kr.title, wc.week_start'
 
-// Calculate 3-month rolling average
-function calculateRollingAverage(weeklyData, weeks) {
-  if (weeks.length === 0) return 0
+  const checkinItems = getAll(sql, params)
 
-  const total = weeks.reduce((sum, week) => sum + (weeklyData[week] || 0), 0)
-  return Math.round((total / weeks.length) * 10) / 10
+  // Group by member + project
+  const groupedData = {}
+
+  checkinItems.forEach(item => {
+    const projectName = item.initiative_name || item.kr_title || 'Unknown'
+    const projectPriority = item.init_priority || item.goal_priority || ''
+    const projectTeam = item.initiative_team || item.member_team || ''
+    const role = item.init_role || 'Contributor'
+
+    const key = `${item.team_member_id}-${item.initiative_id || 'kr' + item.key_result_id}`
+
+    if (!groupedData[key]) {
+      groupedData[key] = {
+        project_priority: projectPriority,
+        project: projectName,
+        team: projectTeam,
+        project_role: role,
+        team_member: item.member_name,
+        weekly: {}
+      }
+      weeks.forEach(week => {
+        groupedData[key].weekly[week] = 0
+      })
+    }
+
+    if (weeks.includes(item.week_start)) {
+      groupedData[key].weekly[item.week_start] = item.time_allocation_pct
+    }
+  })
+
+  return Object.values(groupedData).sort((a, b) => {
+    if (a.project_priority !== b.project_priority) {
+      return (a.project_priority || 'Z').localeCompare(b.project_priority || 'Z')
+    }
+    if (a.project !== b.project) {
+      return a.project.localeCompare(b.project)
+    }
+    return a.team_member.localeCompare(b.team_member)
+  })
 }
 
 /**
- * Generate PMO export data
- * @param {Object} options - Export options
- * @param {string} options.startDate - Start date for export range
- * @param {string} options.endDate - End date for export range
- * @param {string} [options.team] - Optional team filter
- * @param {string} [options.priority] - Optional priority filter
- * @returns {Object} Export data with headers and rows
+ * Generate export data from estimations (planned allocations)
  */
-export function generatePMOExportData(options) {
+function generateFromEstimations(options) {
   const { startDate, endDate, team, priority } = options
-
-  // Get all weeks in range
   const weeks = getWeeksBetween(startDate, endDate)
 
-  // Get unique months in range
-  const months = [...new Set(weeks.map(w => getMonthKey(w)))].sort()
-
-  // Build SQL for fetching allocations
   let initSql = `
     SELECT DISTINCT
       i.id as initiative_id,
@@ -109,7 +158,7 @@ export function generatePMOExportData(options) {
 
   const initiativeMembers = getAll(initSql, params)
 
-  // Fetch all weekly allocations for the date range
+  // Fetch weekly allocations
   const allocations = getAll(`
     SELECT
       wa.team_member_id,
@@ -120,7 +169,7 @@ export function generatePMOExportData(options) {
     WHERE wa.week_start >= ? AND wa.week_start <= ?
   `, [getMonday(startDate), getMonday(endDate)])
 
-  // Build allocation lookup map
+  // Build allocation lookup
   const allocationMap = {}
   allocations.forEach(a => {
     const key = `${a.initiative_id}-${a.team_member_id}`
@@ -130,42 +179,46 @@ export function generatePMOExportData(options) {
     allocationMap[key][a.week_start] = a.allocation_percentage
   })
 
-  // Build export rows
-  const rows = initiativeMembers.map(im => {
+  // Build rows
+  return initiativeMembers.map(im => {
     const key = `${im.initiative_id}-${im.team_member_id}`
     const weeklyData = allocationMap[key] || {}
 
-    // Calculate monthly averages
-    const monthlyAverages = {}
-    months.forEach(month => {
-      monthlyAverages[month] = calculateMonthlyAverage(weeklyData, month)
-    })
-
-    // Calculate 3-month rolling average
-    const rollingAverage = calculateRollingAverage(weeklyData, weeks)
-
-    // Build row data
     const row = {
       project_priority: im.project_priority || '',
       project: im.initiative_name,
       team: im.initiative_team || im.member_team || '',
       project_role: im.role,
       team_member: im.member_name,
-      // Current month allocation (first month in range)
-      allocation_1m: monthlyAverages[months[0]] || 0,
-      // 3-month rolling average
-      allocation_3m: rollingAverage,
-      // Weekly allocations
       weekly: {}
     }
 
-    // Add weekly values
     weeks.forEach(week => {
       row.weekly[week] = weeklyData[week] || 0
     })
 
     return row
   })
+}
+
+/**
+ * Generate PMO export data
+ * @param {Object} options - Export options
+ * @param {string} options.startDate - Start date for export range
+ * @param {string} options.endDate - End date for export range
+ * @param {string} [options.team] - Optional team filter
+ * @param {string} [options.priority] - Optional priority filter
+ * @param {string} [options.source] - 'checkins' for actual work, 'estimations' for planned
+ * @returns {Object} Export data with headers and rows
+ */
+export function generatePMOExportData(options) {
+  const { startDate, endDate, source = 'checkins' } = options
+  const weeks = getWeeksBetween(startDate, endDate)
+
+  // Generate rows based on source
+  const rows = source === 'estimations'
+    ? generateFromEstimations(options)
+    : generateFromCheckins(options)
 
   // Build headers
   const headers = {
@@ -173,10 +226,8 @@ export function generatePMOExportData(options) {
       'Project Priority',
       'Project',
       'Team',
-      'Project Role',
-      'Team member',
-      `Allocation [${getMonthName(months[0] + '-01')}]`,
-      'Allocation [3 Months]'
+      'Project Role / Topics',
+      'Team member'
     ],
     weeks: weeks.map(w => formatWeekLabel(w))
   }
@@ -189,7 +240,7 @@ export function generatePMOExportData(options) {
       endDate: getMonday(endDate),
       weekCount: weeks.length,
       rowCount: rows.length,
-      months,
+      source,
       generatedAt: new Date().toISOString()
     }
   }
@@ -201,13 +252,11 @@ export function generatePMOExportData(options) {
  * @returns {string} CSV content
  */
 export function exportToCSV(exportData) {
-  const { headers, rows, metadata } = exportData
+  const { rows } = exportData
 
-  // Build header row
-  const allHeaders = [...headers.fixed, ...headers.weeks]
-  const csvRows = [allHeaders.map(h => `"${h}"`).join(',')]
+  // Build data rows (no header row)
+  const csvRows = []
 
-  // Build data rows
   rows.forEach(row => {
     const values = [
       row.project_priority,
@@ -215,8 +264,6 @@ export function exportToCSV(exportData) {
       row.team,
       row.project_role,
       row.team_member,
-      row.allocation_1m,
-      row.allocation_3m,
       ...Object.values(row.weekly)
     ]
 
@@ -237,25 +284,19 @@ export function exportToCSV(exportData) {
  * @returns {Array} Array of row arrays for Excel
  */
 export function exportToExcelData(exportData) {
-  const { headers, rows, metadata } = exportData
+  const { rows, metadata } = exportData
 
-  // Build header row
-  const allHeaders = [...headers.fixed, ...headers.weeks]
-
-  // Build data rows
+  // Build data rows (no header row)
   const dataRows = rows.map(row => [
     row.project_priority,
     row.project,
     row.team,
     row.project_role,
     row.team_member,
-    row.allocation_1m,
-    row.allocation_3m,
     ...Object.values(row.weekly)
   ])
 
   return {
-    headers: allHeaders,
     data: dataRows,
     metadata
   }

@@ -371,10 +371,10 @@ export default function WeeklyReview() {
               </span>
             </div>
 
-            {/* Owner */}
+            {/* Lead */}
             {selectedItem.data.owner_name && (
               <div className="mb-4">
-                <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">Owner</label>
+                <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">Lead</label>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-sw-gold/20 flex items-center justify-center">
                     <span className="text-sw-gold font-medium">{selectedItem.data.owner_name[0]}</span>

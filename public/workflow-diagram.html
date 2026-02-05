@@ -374,9 +374,15 @@
         <div class="flow-vertical" style="position: relative;">
           <div class="parallel-container">
             <span class="parallel-label">Run in Parallel</span>
-            <div class="node node-action">
+            <div class="node node-action" style="min-width: 180px;">
               <div class="node-title">SYNC CALENDAR</div>
-              <div class="node-desc">Import PTO & holidays</div>
+              <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+                PTO, Vacation, Sick days<br>
+                Holidays, Birthdays<br>
+                Parental/Maternity leave<br>
+                Remote work, Events<br>
+                Time Off in Lieu, Unpaid
+              </div>
             </div>
             <div class="node node-action">
               <div class="node-title">IMPORT GOALS</div>
@@ -407,8 +413,8 @@
 
         <div class="node node-page">
           <span class="time-badge">15m</span>
-          <div class="node-title">INITIATIVES</div>
-          <div class="node-desc">Create PMO projects</div>
+          <div class="node-title">ESTIMATION</div>
+          <div class="node-desc">Quarter planning</div>
         </div>
 
         <div class="arrow">→</div>
@@ -738,7 +744,7 @@
 
         <div class="node node-page">
           <div class="node-title">TEAM OVERVIEW</div>
-          <div class="node-desc">Check workload balance</div>
+          <div class="node-desc">Projects & workload</div>
         </div>
 
         <div class="arrow">→</div>
@@ -749,33 +755,120 @@
       </div>
     </div>
 
-    <!-- PMO EXPORT WORKFLOW -->
+    <!-- WEEKLY CHECK-IN WORKFLOW -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">5</div>
-        PMO EXPORT WORKFLOW
+        WEEKLY CHECK-IN WORKFLOW
+        <span class="freq-badge">Weekly</span>
+        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">WEEKLY CHECK-IN</div>
+          <div class="node-desc">Log work done</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="new-badge">NEW</span>
+          <span class="time-badge">5m</span>
+          <div class="node-title">CHECK-IN PAGE</div>
+          <div class="node-desc">Select team member</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SELECT WEEK</div>
+          <div class="node-desc">Navigate weeks</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-new" style="min-width: 180px;">
+          <div class="node-title">LOG WORK</div>
+          <div class="node-desc" style="text-align: left; margin-top: 10px;">
+            • Select initiative/KR<br>
+            • Set time allocation %<br>
+            • Add progress %<br>
+            • Add notes
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SUBMIT</div>
+          <div class="node-desc">Save check-in</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">PROGRESS UPDATED</div>
+          <div class="node-desc">KR/Initiative auto-updates</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">CHECK-IN COMPLETE</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT WORKFLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">6</div>
+        EXPORT WORKFLOW
         <span class="freq-badge">Monthly / Quarterly</span>
       </div>
 
       <div class="flow">
         <div class="node node-start">
-          <div class="node-title">PMO REPORTING</div>
+          <div class="node-title">REPORTING</div>
           <div class="node-desc">End of period</div>
         </div>
 
         <div class="arrow">→</div>
 
         <div class="node node-page">
-          <span class="time-badge">10m</span>
-          <div class="node-title">PMO EXPORT</div>
+          <span class="time-badge">5m</span>
+          <div class="node-title">EXPORT PAGE</div>
           <div class="node-desc">Open export page</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-decision">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">DATA SOURCE?</div>
+          <div class="node-desc">Choose type</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="flow-vertical">
+          <div class="node node-new" style="min-width: 160px;">
+            <div class="node-title">WORK DONE</div>
+            <div class="node-desc">From check-ins</div>
+          </div>
+          <div style="color: #888; font-size: 0.8rem;">OR</div>
+          <div class="node node-action" style="min-width: 160px;">
+            <div class="node-title">ESTIMATIONS</div>
+            <div class="node-desc">Planned allocations</div>
+          </div>
         </div>
 
         <div class="arrow">→</div>
 
         <div class="node node-action">
           <div class="node-title">SET DATE RANGE</div>
-          <div class="node-desc">Quarter or custom</div>
+          <div class="node-desc">Quick presets or custom</div>
         </div>
 
         <div class="arrow">→</div>
@@ -788,37 +881,22 @@
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <div class="node-title">PREVIEW EXPORT</div>
+          <div class="node-title">PREVIEW</div>
           <div class="node-desc">Verify data</div>
         </div>
 
         <div class="arrow">→</div>
 
-        <div class="node node-decision">
-          <div class="node-title">DATA CORRECT?</div>
-        </div>
-
-        <div class="arrow">
-          <span class="arrow-label">Yes</span>→
-        </div>
-
         <div class="flow-vertical">
           <div class="node node-action" style="border-color: #4BD5EE;">
             <div class="node-title" style="color: #4BD5EE;">EXPORT CSV</div>
-            <div class="node-desc">Spreadsheet format</div>
+            <div class="node-desc">Spreadsheet</div>
           </div>
           <div style="color: #888; font-size: 0.8rem;">OR</div>
           <div class="node node-action" style="border-color: #FFE81F;">
             <div class="node-title" style="color: #FFE81F;">EXPORT JSON</div>
-            <div class="node-desc">Data interchange</div>
+            <div class="node-desc">Data format</div>
           </div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-action">
-          <div class="node-title">SAVE CONFIG</div>
-          <div class="node-desc">Reuse next time</div>
         </div>
 
         <div class="arrow">→</div>
@@ -832,7 +910,7 @@
     <!-- STATUS FLOW -->
     <div class="section">
       <div class="section-header">
-        <div class="section-icon">6</div>
+        <div class="section-icon">7</div>
         OKR STATUS LIFECYCLE
         <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
       </div>

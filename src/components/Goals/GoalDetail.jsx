@@ -591,7 +591,7 @@ export default function GoalDetail() {
           <p className="text-sw-light text-lg font-orbitron mt-1">{goal.quarter || '-'}</p>
         </div>
         <div className="hologram-card p-4">
-          <p className="text-sw-gray text-xs uppercase tracking-wider">Owner</p>
+          <p className="text-sw-gray text-xs uppercase tracking-wider">Lead</p>
           <p className="text-sw-light text-lg font-orbitron mt-1">{goal.owner_name || '-'}</p>
         </div>
         <div className="hologram-card p-4">
@@ -689,7 +689,7 @@ export default function GoalDetail() {
                           {kr.status || 'active'}
                         </button>
                         {kr.owner_name && (
-                          <span className="text-sw-gray text-xs">Owner: {kr.owner_name}</span>
+                          <span className="text-sw-gray text-xs">Lead: {kr.owner_name}</span>
                         )}
                       </div>
                       <h3 className="text-sw-light font-medium">{kr.title}</h3>
@@ -1026,7 +1026,7 @@ export default function GoalDetail() {
                                     </div>
                                   </div>
                                   {init.owner_name && (
-                                    <p className="text-sw-gray text-xs mt-1">Owner: {init.owner_name}</p>
+                                    <p className="text-sw-gray text-xs mt-1">Lead: {init.owner_name}</p>
                                   )}
                                   <div className="flex flex-wrap items-center gap-1 mt-2">
                                     {init.assignees?.map(a => (

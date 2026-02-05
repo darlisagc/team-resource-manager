@@ -23,32 +23,18 @@ export default function PMOExport() {
   const [endDate, setEndDate] = useState(addWeeks(getMonday(new Date()), 12))
   const [team, setTeam] = useState('')
   const [priority, setPriority] = useState('')
+  const [source, setSource] = useState('checkins')
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [savedConfigs, setSavedConfigs] = useState([])
-  const [configName, setConfigName] = useState('')
-
-  useEffect(() => {
-    fetchSavedConfigs()
-  }, [])
-
-  const fetchSavedConfigs = async () => {
-    try {
-      const res = await fetch('/api/exports/config', { headers: getAuthHeader() })
-      const data = await res.json()
-      setSavedConfigs(data)
-    } catch (error) {
-      console.error('Failed to fetch configs:', error)
-    }
-  }
 
   const fetchPreview = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
         start_date: startDate,
-        end_date: endDate
+        end_date: endDate,
+        source
       })
       if (team) params.append('team', team)
       if (priority) params.append('priority', priority)
@@ -69,7 +55,8 @@ export default function PMOExport() {
       const params = new URLSearchParams({
         start_date: startDate,
         end_date: endDate,
-        format
+        format,
+        source
       })
       if (team) params.append('team', team)
       if (priority) params.append('priority', priority)
@@ -113,11 +100,10 @@ export default function PMOExport() {
   }
 
   const downloadAsExcel = (data) => {
-    // Create a simple CSV from the data (for now, full XLSX requires a library)
-    const { headers, rows } = data
-    const allHeaders = [...headers.fixed, ...headers.weeks]
+    // Create a simple CSV from the data (no headers)
+    const { rows } = data
 
-    let csv = allHeaders.map(h => `"${h}"`).join(',') + '\n'
+    let csv = ''
 
     rows.forEach(row => {
       const values = [
@@ -126,8 +112,6 @@ export default function PMOExport() {
         row.team,
         row.project_role,
         row.team_member,
-        row.allocation_1m,
-        row.allocation_3m,
         ...Object.values(row.weekly)
       ]
       csv += values.map(v => typeof v === 'string' && v.includes(',') ? `"${v}"` : v).join(',') + '\n'
@@ -144,47 +128,6 @@ export default function PMOExport() {
     a.remove()
   }
 
-  const handleSaveConfig = async () => {
-    if (!configName.trim()) return
-
-    try {
-      const res = await fetch('/api/exports/config', {
-        method: 'POST',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: configName,
-          start_week: startDate,
-          end_week: endDate
-        })
-      })
-
-      if (res.ok) {
-        setConfigName('')
-        fetchSavedConfigs()
-      }
-    } catch (error) {
-      console.error('Failed to save config:', error)
-    }
-  }
-
-  const handleLoadConfig = (config) => {
-    setStartDate(config.start_week)
-    setEndDate(config.end_week)
-    fetchPreview()
-  }
-
-  const handleDeleteConfig = async (id) => {
-    try {
-      await fetch(`/api/exports/config/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeader()
-      })
-      fetchSavedConfigs()
-    } catch (error) {
-      console.error('Failed to delete config:', error)
-    }
-  }
-
   // Quick range presets
   const setQuickRange = (weeks) => {
     const start = getMonday(new Date())
@@ -196,8 +139,8 @@ export default function PMOExport() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-orbitron text-2xl text-sw-gold">PMO Export</h1>
-        <p className="text-sw-gray text-sm">Generate allocation reports in PMO spreadsheet format</p>
+        <h1 className="font-orbitron text-2xl text-sw-gold">Export</h1>
+        <p className="text-sw-gray text-sm">Generate allocation reports in spreadsheet format</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -265,6 +208,35 @@ export default function PMOExport() {
                 </select>
               </div>
 
+              {/* Data Source */}
+              <div>
+                <label className="block text-sw-gray text-sm mb-2">Data Source</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="source"
+                      value="checkins"
+                      checked={source === 'checkins'}
+                      onChange={(e) => setSource(e.target.value)}
+                      className="accent-sw-gold"
+                    />
+                    <span className="text-sw-light text-sm">Work Done (Check-ins)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="source"
+                      value="estimations"
+                      checked={source === 'estimations'}
+                      onChange={(e) => setSource(e.target.value)}
+                      className="accent-sw-gold"
+                    />
+                    <span className="text-sw-light text-sm">Estimations (Planned)</span>
+                  </label>
+                </div>
+              </div>
+
               <button
                 onClick={fetchPreview}
                 disabled={loading}
@@ -275,56 +247,6 @@ export default function PMOExport() {
             </div>
           </div>
 
-          {/* Saved Configurations */}
-          <div className="hologram-card p-6">
-            <h2 className="font-orbitron text-sw-blue text-sm mb-4">SAVED CONFIGURATIONS</h2>
-
-            <div className="space-y-3 mb-4">
-              {savedConfigs.map(config => (
-                <div key={config.id} className="flex items-center justify-between p-2 bg-sw-darker/50 rounded">
-                  <div>
-                    <p className="text-sw-light text-sm">{config.name}</p>
-                    <p className="text-sw-gray text-xs">{config.start_week} to {config.end_week}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleLoadConfig(config)}
-                      className="text-sw-blue hover:text-sw-gold text-xs"
-                    >
-                      Load
-                    </button>
-                    <button
-                      onClick={() => handleDeleteConfig(config.id)}
-                      className="text-sw-red/70 hover:text-sw-red text-xs"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {savedConfigs.length === 0 && (
-                <p className="text-sw-gray text-sm">No saved configurations</p>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={configName}
-                onChange={(e) => setConfigName(e.target.value)}
-                placeholder="Config name..."
-                className="input-field flex-1 text-sm"
-              />
-              <button
-                onClick={handleSaveConfig}
-                disabled={!configName.trim()}
-                className="btn-secondary text-sm"
-              >
-                Save
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Preview Panel */}
@@ -392,12 +314,14 @@ export default function PMOExport() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-sw-gray/30">
-                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Priority</th>
+                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Project Priority</th>
                         <th className="text-left py-2 px-2 text-sw-gray text-xs">Project</th>
-                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Role</th>
-                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Member</th>
-                        <th className="text-right py-2 px-2 text-sw-gray text-xs">1M Avg</th>
-                        <th className="text-right py-2 px-2 text-sw-gray text-xs">3M Avg</th>
+                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Team</th>
+                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Project Role / Topics</th>
+                        <th className="text-left py-2 px-2 text-sw-gray text-xs">Team member</th>
+                        {preview.headers.weeks.map((week, i) => (
+                          <th key={i} className="text-center py-2 px-2 text-sw-blue text-xs">{week}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -409,14 +333,16 @@ export default function PMOExport() {
                               row.project_priority === 'P2' ? 'text-sw-gold' :
                               row.project_priority === 'P3' ? 'text-sw-blue' : 'text-sw-green'
                             }`}>
-                              {row.project_priority}
+                              {row.project_priority || '-'}
                             </span>
                           </td>
                           <td className="py-2 px-2 text-sw-light">{row.project}</td>
-                          <td className="py-2 px-2 text-sw-gray">{row.project_role}</td>
+                          <td className="py-2 px-2 text-sw-gray">{row.team || '-'}</td>
+                          <td className="py-2 px-2 text-sw-gray">{row.project_role || '-'}</td>
                           <td className="py-2 px-2 text-sw-light">{row.team_member}</td>
-                          <td className="py-2 px-2 text-right text-sw-blue">{row.allocation_1m}%</td>
-                          <td className="py-2 px-2 text-right text-sw-purple">{row.allocation_3m}%</td>
+                          {Object.values(row.weekly || {}).map((pct, j) => (
+                            <td key={j} className="py-2 px-2 text-center text-sw-gold">{pct}%</td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>

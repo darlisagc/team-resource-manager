@@ -169,41 +169,6 @@ export default function TeamOverview() {
                 </div>
               </div>
 
-              {/* Time Off */}
-              {selectedMember.timeOff?.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-orbitron text-sw-gold text-xs mb-3">TIME OFF RECORDS</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {selectedMember.timeOff.map(record => (
-                      <div key={record.id} className="flex justify-between text-sm p-2 bg-sw-darker/50 rounded">
-                        <span className={`badge badge-${record.type === 'PTO' ? 'info' : record.type === 'sick' ? 'danger' : 'warning'}`}>
-                          {record.type}
-                        </span>
-                        <span className="text-sw-gray">{record.start_date}</span>
-                        <span className="text-sw-light">{record.hours}h</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Allocations */}
-              {selectedMember.allocations?.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-orbitron text-sw-gold text-xs mb-3">CURRENT ASSIGNMENTS</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {selectedMember.allocations.map(alloc => (
-                      <div key={alloc.id} className="p-2 bg-sw-darker/50 rounded">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-sw-light">{alloc.goal_title || alloc.task_title || 'Direct Assignment'}</span>
-                          <span className="text-sw-gold">{alloc.allocation_percentage}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Assigned Goals */}
               {selectedMember.goals?.length > 0 && (
                 <div className="mt-6">
@@ -319,6 +284,41 @@ export default function TeamOverview() {
               {!selectedMember.goals?.length && !selectedMember.keyResults?.length && !selectedMember.initiatives?.length && (
                 <div className="mt-6 p-4 bg-sw-darker/30 rounded text-center">
                   <p className="text-sw-gray text-sm">No goals, key results, or initiatives assigned</p>
+                </div>
+              )}
+
+              {/* Allocations */}
+              {selectedMember.allocations?.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-orbitron text-sw-gold text-xs mb-3">CURRENT ASSIGNMENTS</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedMember.allocations.map(alloc => (
+                      <div key={alloc.id} className="p-2 bg-sw-darker/50 rounded">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-sw-light">{alloc.goal_title || alloc.task_title || 'Direct Assignment'}</span>
+                          <span className="text-sw-gold">{alloc.allocation_percentage}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Time Off */}
+              {selectedMember.timeOff?.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-orbitron text-sw-gold text-xs mb-3">TIME OFF RECORDS</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {selectedMember.timeOff.map(record => (
+                      <div key={record.id} className="flex justify-between text-sm p-2 bg-sw-darker/50 rounded">
+                        <span className={`badge badge-${record.type === 'PTO' ? 'info' : record.type === 'sick' ? 'danger' : 'warning'}`}>
+                          {record.type}
+                        </span>
+                        <span className="text-sw-gray">{record.start_date}</span>
+                        <span className="text-sw-light">{record.hours}h</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

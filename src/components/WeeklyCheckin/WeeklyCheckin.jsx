@@ -525,8 +525,8 @@ export default function WeeklyCheckin() {
           </button>
         </div>
 
-        {/* Week Selector (shared between views) */}
-        <div className="hologram-card p-4">
+        {/* Week Selector (only for team view) */}
+        {viewMode === 'team' && <div className="hologram-card p-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => {
@@ -553,7 +553,7 @@ export default function WeeklyCheckin() {
               Next &#9654;
             </button>
           </div>
-        </div>
+        </div>}
 
         {/* Team Overview View */}
         {viewMode === 'team' && (
@@ -696,16 +696,16 @@ export default function WeeklyCheckin() {
           <p className="text-sw-gray text-sm">Report your time allocation and progress</p>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setSelectedMember(null)}
+            className="px-3 py-2 bg-sw-darker border border-sw-gray/30 text-sw-gray hover:border-sw-gold hover:text-sw-gold rounded-lg transition-all text-sm flex items-center gap-2"
+          >
+            <span>&#9664;</span> Back
+          </button>
           <div className="hologram-card px-4 py-2">
             <span className="text-sw-gray text-sm">Reporting as: </span>
             <span className="text-sw-gold font-orbitron">{selectedMember.name}</span>
           </div>
-          <button
-            onClick={() => setSelectedMember(null)}
-            className="text-sw-gray hover:text-sw-gold text-sm"
-          >
-            Change
-          </button>
         </div>
       </div>
 
@@ -793,7 +793,7 @@ export default function WeeklyCheckin() {
                     <div className="col-span-6 flex items-center gap-2 flex-wrap">
                       <span className="px-2 py-0.5 text-xs rounded bg-sw-blue/20 text-sw-blue">Init</span>
                       <span className="text-sw-light text-sm">{item.name}</span>
-                      {item.isOwner && <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Owner</span>}
+                      {item.isOwner && <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Lead</span>}
                     </div>
                     <div className="col-span-3 text-right">
                       <span className="text-sw-gold font-orbitron">{item.time}%</span>
@@ -816,7 +816,7 @@ export default function WeeklyCheckin() {
                     <div className="col-span-6 flex items-center gap-2 flex-wrap">
                       <span className="px-2 py-0.5 text-xs rounded bg-sw-purple/20 text-sw-purple">KR</span>
                       <span className="text-sw-light text-sm">{item.name}</span>
-                      {item.isOwner && <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Owner</span>}
+                      {item.isOwner && <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Lead</span>}
                     </div>
                     <div className="col-span-3 text-right">
                       <span className="text-sw-gold font-orbitron">{item.time}%</span>
@@ -1135,7 +1135,7 @@ export default function WeeklyCheckin() {
                               <>
                                 <span className="text-sw-light font-medium">{item.name}</span>
                                 {item.isOwner && (
-                                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Owner</span>
+                                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Lead</span>
                                 )}
                                 {/* Show total hours and progress for BAU initiatives */}
                                 {item.isBauInitiative && (

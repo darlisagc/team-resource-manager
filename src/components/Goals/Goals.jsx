@@ -139,7 +139,7 @@ function GoalCard({ goal, onClick }) {
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           {goal.owner_name && (
-            <span className="text-sw-gray">Owner: {goal.owner_name}</span>
+            <span className="text-sw-gray">Lead: {goal.owner_name}</span>
           )}
         </div>
         <div className="flex items-center gap-2">

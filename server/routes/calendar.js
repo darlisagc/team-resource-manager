@@ -146,9 +146,8 @@ router.post('/sync', async (req, res) => {
             const eventType = match[1].toLowerCase()
             const personName = match[2].trim()
 
-            // Only skip employment start/end dates (not useful for capacity)
-            if (eventType.includes('start date') || eventType.includes('end date') ||
-                eventType.includes('probation')) {
+            // Skip probation period end events (not useful for capacity)
+            if (eventType.includes('probation')) {
               feedResult.skipped++
               continue
             }
@@ -293,8 +292,24 @@ router.post('/sync', async (req, res) => {
               timeOffType = 'parental'
             } else if (eventType.includes('birthday') || eventType.includes('anniversary')) {
               timeOffType = 'birthday'
-            } else if (eventType.includes('remote') || eventType.includes('home')) {
+            } else if (eventType.includes('remote') || eventType.includes('home office') || eventType.includes('work remotely')) {
               timeOffType = 'remote'
+            } else if (eventType.includes('vacation') || eventType.includes('time off') || eventType.includes('my calendar')) {
+              timeOffType = 'PTO'
+            } else if (eventType.includes('time off in lieu') || eventType.includes('lieu')) {
+              timeOffType = 'lieu'
+            } else if (eventType.includes('benefits plan') || eventType.includes('employee benefits')) {
+              timeOffType = 'benefits'
+            } else if (eventType.includes('service provider')) {
+              timeOffType = 'service_provider'
+            } else if (eventType.includes('event')) {
+              timeOffType = 'event'
+            } else if (eventType.includes('overtime') || eventType.includes('compensation')) {
+              timeOffType = 'overtime'
+            } else if (eventType.includes('unpaid')) {
+              timeOffType = 'unpaid'
+            } else if (eventType.includes('start date') || eventType.includes('end date')) {
+              timeOffType = 'employment'
             }
 
             // Find team member - try multiple matching strategies
@@ -451,9 +466,8 @@ router.post('/preview', async (req, res) => {
         const personName = match[2].trim()
         const eventTypeLower = eventType.toLowerCase()
 
-        // Only skip employment start/end dates
-        if (eventTypeLower.includes('start date') || eventTypeLower.includes('end date') ||
-            eventTypeLower.includes('probation')) continue
+        // Only skip probation end dates
+        if (eventTypeLower.includes('probation')) continue
 
         let startDate = event.start ? formatDate(event.start) : null
         let endDate = event.end ? formatDate(event.end) : null

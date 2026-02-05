@@ -15,7 +15,7 @@ function getMonday(date) {
 
 // Generate PMO export
 router.get('/pmo', (req, res) => {
-  const { start_date, end_date, format, team, priority } = req.query
+  const { start_date, end_date, format, team, priority, source } = req.query
 
   if (!start_date || !end_date) {
     return res.status(400).json({
@@ -28,7 +28,8 @@ router.get('/pmo', (req, res) => {
       startDate: start_date,
       endDate: end_date,
       team,
-      priority
+      priority,
+      source: source || 'checkins'
     })
 
     // Return based on format
@@ -61,7 +62,7 @@ router.get('/pmo', (req, res) => {
 
 // Preview PMO export (returns summary without full data)
 router.get('/pmo/preview', (req, res) => {
-  const { start_date, end_date, team, priority } = req.query
+  const { start_date, end_date, team, priority, source } = req.query
 
   if (!start_date || !end_date) {
     return res.status(400).json({
@@ -74,7 +75,8 @@ router.get('/pmo/preview', (req, res) => {
       startDate: start_date,
       endDate: end_date,
       team,
-      priority
+      priority,
+      source: source || 'checkins'
     })
 
     // Return preview with first few rows

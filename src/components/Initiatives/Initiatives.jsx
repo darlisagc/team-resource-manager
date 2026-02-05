@@ -5,6 +5,8 @@ import { WEEKS_PER_QUARTER } from '../../utils/calculations'
 export default function Initiatives() {
   const { getAuthHeader } = useAuth()
   const [initiatives, setInitiatives] = useState([])
+  const [goals, setGoals] = useState([])
+  const [keyResults, setKeyResults] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
   const [timeOff, setTimeOff] = useState([])
   const [loading, setLoading] = useState(true)
@@ -16,6 +18,7 @@ export default function Initiatives() {
     fetchQuarters()
     fetchTeamMembers()
     fetchTimeOff()
+    fetchGoalsAndKRs()
   }, [])
 
   useEffect(() => {
@@ -23,6 +26,21 @@ export default function Initiatives() {
       fetchInitiatives()
     }
   }, [selectedQuarter])
+
+  const fetchGoalsAndKRs = async () => {
+    try {
+      const [goalsRes, krsRes] = await Promise.all([
+        fetch('/api/goals', { headers: getAuthHeader() }),
+        fetch('/api/key-results', { headers: getAuthHeader() })
+      ])
+      const goalsData = await goalsRes.json()
+      const krsData = await krsRes.json()
+      setGoals(goalsData)
+      setKeyResults(krsData)
+    } catch (error) {
+      console.error('Failed to fetch goals/KRs:', error)
+    }
+  }
 
   const fetchQuarters = async () => {
     try {
@@ -114,26 +132,60 @@ export default function Initiatives() {
     }
   }
 
-  // Group initiatives by goal
+  // Group all goals, KRs, and initiatives together
   const groupedByGoal = useMemo(() => {
     const groups = {}
+
+    // First, add all goals (filtered by selected quarter or show all)
+    goals.forEach(goal => {
+      // Filter by quarter if not "All Quarters"
+      if (selectedQuarter !== 'All Quarters' && goal.quarter !== selectedQuarter) {
+        return
+      }
+
+      groups[goal.title] = {
+        goalId: goal.id,
+        goalTitle: goal.title,
+        goalQuarter: goal.quarter,
+        goalProgress: goal.progress || 0,
+        keyResults: {}
+      }
+    })
+
+    // Add key results to their goals
+    keyResults.forEach(kr => {
+      const goal = goals.find(g => g.id === kr.goal_id)
+      if (!goal || !groups[goal.title]) return
+
+      groups[goal.title].keyResults[kr.title] = {
+        krId: kr.id,
+        krTitle: kr.title,
+        krProgress: kr.progress || 0,
+        krTarget: kr.target_value,
+        krCurrent: kr.current_value,
+        initiatives: []
+      }
+    })
+
+    // Add initiatives to their key results
     initiatives.forEach(init => {
-      const goalKey = init.goal_title || 'Unassigned'
-      if (!groups[goalKey]) {
-        groups[goalKey] = {
-          goalTitle: init.goal_title,
-          goalQuarter: init.goal_quarter,
-          keyResults: {}
+      const goalKey = init.goal_title
+      if (!groups[goalKey]) return
+
+      const krKey = init.key_result_title
+      if (!groups[goalKey].keyResults[krKey]) {
+        groups[goalKey].keyResults[krKey] = {
+          krId: init.key_result_id,
+          krTitle: krKey,
+          krProgress: 0,
+          initiatives: []
         }
       }
-      const krKey = init.key_result_title || 'No Key Result'
-      if (!groups[goalKey].keyResults[krKey]) {
-        groups[goalKey].keyResults[krKey] = []
-      }
-      groups[goalKey].keyResults[krKey].push(init)
+      groups[goalKey].keyResults[krKey].initiatives.push(init)
     })
+
     return groups
-  }, [initiatives])
+  }, [initiatives, goals, keyResults, selectedQuarter])
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -242,17 +294,27 @@ export default function Initiatives() {
       <div className="space-y-6">
         {Object.entries(groupedByGoal).map(([goalTitle, goalData]) => (
           <div key={goalTitle} className="hologram-card p-6">
-            <h3 className="font-orbitron text-sw-gold text-lg mb-4">{goalTitle}</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-orbitron text-sw-gold text-lg">{goalTitle}</h3>
+              <span className="px-2 py-1 bg-sw-gray/20 text-sw-gray text-xs rounded">{goalData.goalQuarter}</span>
+            </div>
 
-            {Object.entries(goalData.keyResults).map(([krTitle, krInitiatives]) => (
+            {Object.keys(goalData.keyResults).length === 0 ? (
+              <p className="text-sw-gray text-sm italic">No key results</p>
+            ) : Object.entries(goalData.keyResults).map(([krTitle, krData]) => (
               <div key={krTitle} className="mb-4 last:mb-0">
                 <h4 className="text-sw-blue text-sm mb-2 flex items-center gap-2">
                   <span className="px-2 py-0.5 bg-sw-blue/20 text-sw-blue text-xs rounded">KR</span>
                   {krTitle}
+                  {krData.krTarget && (
+                    <span className="text-sw-gray text-xs">({krData.krCurrent || 0}/{krData.krTarget})</span>
+                  )}
                 </h4>
 
                 <div className="space-y-2 ml-4">
-                  {krInitiatives.map(init => {
+                  {(!krData.initiatives || krData.initiatives.length === 0) ? (
+                    <p className="text-sw-gray text-xs italic py-2">No initiatives</p>
+                  ) : krData.initiatives.map(init => {
                     const fteWeeks = (init.estimated_hours || 0) / 40
                     return (
                       <div key={init.id} className="flex items-center gap-4 p-3 bg-sw-darker/50 rounded-lg">
@@ -271,7 +333,7 @@ export default function Initiatives() {
                             <span className="text-sw-light">{init.name}</span>
                           </div>
                           {init.owner_name && (
-                            <p className="text-sw-gray text-xs mt-0.5">Owner: {init.owner_name}</p>
+                            <p className="text-sw-gray text-xs mt-0.5">Lead: {init.owner_name}</p>
                           )}
                         </div>
 
@@ -352,10 +414,10 @@ export default function Initiatives() {
               <span className="text-sw-gray">Goal subtotal:</span>
               <div>
                 <span className="text-sw-gold font-orbitron">
-                  {Object.values(goalData.keyResults).flat().reduce((sum, i) => sum + (i.estimated_hours || 0), 0)}h
+                  {Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0)}h
                 </span>
                 <span className="text-sw-gray ml-2">
-                  ({(Object.values(goalData.keyResults).flat().reduce((sum, i) => sum + (i.estimated_hours || 0), 0) / 40).toFixed(1)} FTE wks)
+                  ({(Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0) / 40).toFixed(1)} FTE wks)
                 </span>
               </div>
             </div>
