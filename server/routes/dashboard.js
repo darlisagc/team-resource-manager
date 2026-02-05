@@ -241,14 +241,17 @@ router.get('/quarters', (req, res) => {
   const quarterSet = new Set(quarters.map(q => q.quarter))
   quarterSet.add(currentQuarter)
 
+  // Remove 'Ongoing' from the set if present
+  quarterSet.delete('Ongoing')
+
   // Sort quarters - current quarter first, then descending, special quarters at end
-  const specialQuarters = ['All', 'Backlog', 'Ongoing']
+  const specialQuarters = ['All', 'Backlog']
   const sortedQuarters = Array.from(quarterSet).sort((a, b) => {
     // Current quarter always first
     if (a === currentQuarter) return -1
     if (b === currentQuarter) return 1
 
-    // Special quarters (All, Backlog, Ongoing) go at the end
+    // Special quarters (All, Backlog) go at the end
     const aIsSpecial = specialQuarters.includes(a)
     const bIsSpecial = specialQuarters.includes(b)
     if (aIsSpecial && !bIsSpecial) return 1
