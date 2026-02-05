@@ -52,8 +52,7 @@ function generateFromCheckins(options) {
       i.team as initiative_team,
       ia.role as init_role,
       kr.title as kr_title,
-      g.title as goal_title,
-      g.project_priority as goal_priority
+      g.title as goal_title
     FROM weekly_checkin_items wci
     JOIN weekly_checkins wc ON wci.checkin_id = wc.id
     JOIN team_members tm ON wc.team_member_id = tm.id
@@ -72,8 +71,8 @@ function generateFromCheckins(options) {
     params.push(team, team, team)
   }
   if (priority) {
-    sql += ' AND (i.project_priority = ? OR g.project_priority = ?)'
-    params.push(priority, priority)
+    sql += ' AND i.project_priority = ?'
+    params.push(priority)
   }
 
   sql += ' ORDER BY tm.name, i.name, kr.title, wc.week_start'
@@ -85,7 +84,7 @@ function generateFromCheckins(options) {
 
   checkinItems.forEach(item => {
     const projectName = item.initiative_name || item.kr_title || 'Unknown'
-    const projectPriority = item.init_priority || item.goal_priority || ''
+    const projectPriority = item.init_priority || ''
     const projectTeam = item.initiative_team || item.member_team || ''
     const role = item.init_role || 'Contributor'
 
