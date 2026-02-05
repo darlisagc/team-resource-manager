@@ -128,11 +128,37 @@ export default function PMOExport() {
     a.remove()
   }
 
-  // Quick range presets
-  const setQuickRange = (weeks) => {
+  // Quick range presets - auto fetch preview
+  const setQuickRange = async (weeks) => {
     const start = getMonday(new Date())
+    const end = addWeeks(start, weeks - 1)
     setStartDate(start)
-    setEndDate(addWeeks(start, weeks - 1))
+    setEndDate(end)
+
+    // Auto fetch preview with new dates
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        start_date: start,
+        end_date: end,
+        source
+      })
+      if (team) params.append('team', team)
+      if (priority) params.append('priority', priority)
+
+      const res = await fetch(`/api/exports/pmo/preview?${params}`, { headers: getAuthHeader() })
+      const data = await res.json()
+      setPreview(data)
+    } catch (error) {
+      console.error('Failed to fetch preview:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Clear preview
+  const clearPreview = () => {
+    setPreview(null)
   }
 
   return (
@@ -254,8 +280,14 @@ export default function PMOExport() {
           <div className="hologram-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-orbitron text-sw-blue text-sm">EXPORT PREVIEW</h2>
-              {preview && (
+              {preview && preview.metadata && (
                 <div className="flex gap-2">
+                  <button
+                    onClick={clearPreview}
+                    className="btn-secondary text-sm"
+                  >
+                    Clear
+                  </button>
                   <button
                     onClick={() => handleExport('csv')}
                     disabled={exporting}
@@ -274,40 +306,42 @@ export default function PMOExport() {
               )}
             </div>
 
-            {preview ? (
+            {preview && preview.metadata ? (
               <div>
                 {/* Metadata */}
                 <div className="grid grid-cols-4 gap-4 mb-6">
                   <div className="p-3 bg-sw-darker/50 rounded">
                     <p className="text-sw-gray text-xs">Total Rows</p>
-                    <p className="font-orbitron text-sw-gold text-xl">{preview.totalRows}</p>
+                    <p className="font-orbitron text-sw-gold text-xl">{preview.totalRows || 0}</p>
                   </div>
                   <div className="p-3 bg-sw-darker/50 rounded">
                     <p className="text-sw-gray text-xs">Weeks</p>
-                    <p className="font-orbitron text-sw-blue text-xl">{preview.metadata.weekCount}</p>
+                    <p className="font-orbitron text-sw-blue text-xl">{preview.metadata?.weekCount || 0}</p>
                   </div>
                   <div className="p-3 bg-sw-darker/50 rounded">
                     <p className="text-sw-gray text-xs">Start</p>
-                    <p className="text-sw-light text-sm">{preview.metadata.startDate}</p>
+                    <p className="text-sw-light text-sm">{preview.metadata?.startDate || '-'}</p>
                   </div>
                   <div className="p-3 bg-sw-darker/50 rounded">
                     <p className="text-sw-gray text-xs">End</p>
-                    <p className="text-sw-light text-sm">{preview.metadata.endDate}</p>
+                    <p className="text-sw-light text-sm">{preview.metadata?.endDate || '-'}</p>
                   </div>
                 </div>
 
                 {/* Headers Preview */}
-                <div className="mb-4">
-                  <h3 className="text-sw-gray text-xs mb-2">COLUMNS</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {preview.headers.fixed.map((h, i) => (
-                      <span key={i} className="px-2 py-1 bg-sw-gold/20 text-sw-gold text-xs rounded">{h}</span>
-                    ))}
-                    <span className="px-2 py-1 bg-sw-blue/20 text-sw-blue text-xs rounded">
-                      + {preview.headers.weeks.length} weekly columns
-                    </span>
+                {preview.headers && (
+                  <div className="mb-4">
+                    <h3 className="text-sw-gray text-xs mb-2">COLUMNS</h3>
+                    <div className="flex flex-wrap gap-1">
+                      {preview.headers.fixed?.map((h, i) => (
+                        <span key={i} className="px-2 py-1 bg-sw-gold/20 text-sw-gold text-xs rounded">{h}</span>
+                      ))}
+                      <span className="px-2 py-1 bg-sw-blue/20 text-sw-blue text-xs rounded">
+                        + {preview.headers.weeks?.length || 0} weekly columns
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Data Preview */}
                 <div className="overflow-x-auto">
@@ -319,13 +353,13 @@ export default function PMOExport() {
                         <th className="text-left py-2 px-2 text-sw-gray text-xs">Team</th>
                         <th className="text-left py-2 px-2 text-sw-gray text-xs">Project Role / Topics</th>
                         <th className="text-left py-2 px-2 text-sw-gray text-xs">Team member</th>
-                        {preview.headers.weeks.map((week, i) => (
+                        {preview.headers?.weeks?.map((week, i) => (
                           <th key={i} className="text-center py-2 px-2 text-sw-blue text-xs">{week}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.previewRows.map((row, i) => (
+                      {preview.previewRows?.map((row, i) => (
                         <tr key={i} className="border-b border-sw-gray/10">
                           <td className="py-2 px-2">
                             <span className={`font-bold ${
@@ -348,7 +382,7 @@ export default function PMOExport() {
                     </tbody>
                   </table>
 
-                  {preview.totalRows > 5 && (
+                  {(preview.totalRows || 0) > 5 && (
                     <p className="text-sw-gray text-xs mt-2 text-center">
                       Showing 5 of {preview.totalRows} rows
                     </p>
