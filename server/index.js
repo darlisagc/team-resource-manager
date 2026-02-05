@@ -83,14 +83,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error', error: err.message })
 })
 
-// Start server
-app.listen(PORT, () => {
+// Start server - bind to 0.0.0.0 to listen on all IPv4 interfaces
+const HOST = process.env.HOST || '0.0.0.0'
+app.listen(PORT, HOST, () => {
   console.log(`
   ╔══════════════════════════════════════════════════════════╗
   ║                                                          ║
   ║   ⭐ GALACTIC RESOURCE COMMAND - SERVER ONLINE ⭐        ║
   ║                                                          ║
-  ║   Server running on port ${PORT}                           ║
+  ║   Server running on ${HOST}:${PORT}                          ║
   ║   API available at http://localhost:${PORT}/api            ║
   ║                                                          ║
   ║   May the Force be with your resources!                  ║
