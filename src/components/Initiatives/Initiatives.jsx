@@ -28,9 +28,9 @@ export default function Initiatives() {
     try {
       const res = await fetch('/api/dashboard/quarters', { headers: getAuthHeader() })
       const data = await res.json()
-      // Add "All Quarters" option at the beginning
+      // Add "All Quarters" option at the beginning, default to it
       setQuarters(['All Quarters', ...data])
-      if (data.length > 0) setSelectedQuarter(data[0])
+      setSelectedQuarter('All Quarters')
     } catch (error) {
       console.error('Failed to fetch quarters:', error)
     }
