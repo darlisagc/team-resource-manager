@@ -257,43 +257,47 @@ docker cp team-resource-manager:/app/data/database.sqlite ./backup.sqlite
 
 ### Remote Server (UAT)
 
-The application is deployed on a remote server accessible via SSH jump host.
+The application is deployed on the UAT server using Docker.
 
 **Server:** uat.yaci.cf-app.org
 **Port:** 3011
-**Process Manager:** PM2
-**Reverse Proxy:** Nginx
+**Deployment:** Docker container
+**Reverse Proxy:** Nginx (managed by Ansible)
 
-### Deployment Steps
+### UAT Deployment Steps
 
 1. SSH to server (via jump host):
 ```bash
 ssh uat  # Uses SSH config alias
 ```
 
-2. Pull latest changes:
+2. Pull latest changes and rebuild:
 ```bash
 cd /home/darlisa/apps/team-resource-manager
 git pull origin main
+docker build -t team-resource-manager .
 ```
 
-3. Build frontend (if needed):
+3. Restart container:
 ```bash
-npm run build
+docker-compose down
+docker-compose up -d
 ```
 
-4. Restart application:
+4. Copy database if needed:
 ```bash
-pm2 restart galactic-resource-manager
+docker cp database.sqlite team-resource-manager:/app/data/database.sqlite
+docker restart team-resource-manager
 ```
 
-### PM2 Commands
+### Docker Commands (UAT)
 
 ```bash
-pm2 status                    # View running processes
-pm2 logs galactic-resource-manager  # View logs
-pm2 restart galactic-resource-manager  # Restart app
-pm2 save                      # Save current process list
+docker ps                                    # View running containers
+docker logs team-resource-manager            # View logs
+docker logs -f team-resource-manager         # Follow logs
+docker restart team-resource-manager         # Restart container
+docker exec -it team-resource-manager sh     # Shell into container
 ```
 
 ### Nginx Configuration
