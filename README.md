@@ -76,7 +76,9 @@ Team Resource Manager helps teams track their objectives and key results (OKRs),
 - Schema includes: users, members, goals, key_results, initiatives, allocations, weekly_checkins, etc.
 
 ### Deployment
-- **PM2** - Process manager for Node.js
+- **Docker** - Containerized deployment with multi-stage builds
+- **Docker Compose** - Container orchestration
+- **PM2** - Process manager for Node.js (non-Docker deployments)
 - **Nginx** - Reverse proxy and SSL termination
 - **Git** - Version control
 
@@ -141,6 +143,9 @@ team-resource-manager/
 │   ├── services/           # Business logic services
 │   └── index.js            # Server entry point
 ├── dist/                   # Production build output
+├── Dockerfile              # Multi-stage Docker build
+├── docker-compose.yml      # Docker Compose configuration
+├── scripts/                # Deployment and utility scripts
 └── package.json
 ```
 
@@ -182,6 +187,73 @@ Goal (e.g., "Improve Customer Satisfaction")
 ```
 
 ## Deployment
+
+### Docker Deployment (Recommended)
+
+The application includes a multi-stage Dockerfile optimized for production.
+
+#### Quick Start with Docker
+
+```bash
+# Build the image
+npm run docker:build
+# or
+docker build -t team-resource-manager .
+
+# Run with Docker Compose
+npm run docker:run
+# or
+docker-compose up -d
+
+# View logs
+npm run docker:logs
+# or
+docker-compose logs -f
+
+# Stop
+npm run docker:stop
+# or
+docker-compose down
+```
+
+#### Docker Configuration
+
+**Dockerfile features:**
+- Multi-stage build (builder + production)
+- Node.js 20 slim base image
+- Non-root user for security
+- Health check endpoint
+- Optimized layer caching
+
+**docker-compose.yml features:**
+- Persistent volumes for database and uploads
+- Environment variable configuration
+- Automatic restart policy
+- Log rotation (10MB max, 3 files)
+- Health checks
+
+#### Environment Variables (Docker)
+
+```bash
+# Set in docker-compose.yml or pass via -e flag
+PORT=3011                          # Application port
+NODE_ENV=production                # Environment mode
+JWT_SECRET=your-secret-key         # JWT signing secret (change in production!)
+DATABASE_PATH=/app/data/database.sqlite  # Database location
+```
+
+#### Data Persistence
+
+Docker volumes ensure data persists across container restarts:
+- `team-resource-manager-data` - SQLite database
+- `team-resource-manager-uploads` - Uploaded files
+
+To backup the database:
+```bash
+docker cp team-resource-manager:/app/data/database.sqlite ./backup.sqlite
+```
+
+---
 
 ### Remote Server (UAT)
 
