@@ -130,10 +130,14 @@ router.get('/week/:weekStart', (req, res) => {
       wci.*,
       i.name as initiative_name,
       i.category as category,
-      kr.title as key_result_title
+      kr.title as key_result_title,
+      COALESCE(g_init.title, g_kr.title) as goal_title
     FROM weekly_checkin_items wci
     LEFT JOIN initiatives i ON wci.initiative_id = i.id
+    LEFT JOIN key_results kr_init ON i.key_result_id = kr_init.id
+    LEFT JOIN goals g_init ON kr_init.goal_id = g_init.id
     LEFT JOIN key_results kr ON wci.key_result_id = kr.id
+    LEFT JOIN goals g_kr ON kr.goal_id = g_kr.id
     WHERE wci.checkin_id = ?
   `, [checkin.id])
 
@@ -169,10 +173,14 @@ router.get('/member/:memberId/week/:weekStart', (req, res) => {
       wci.*,
       i.name as initiative_name,
       i.category as category,
-      kr.title as key_result_title
+      kr.title as key_result_title,
+      COALESCE(g_init.title, g_kr.title) as goal_title
     FROM weekly_checkin_items wci
     LEFT JOIN initiatives i ON wci.initiative_id = i.id
+    LEFT JOIN key_results kr_init ON i.key_result_id = kr_init.id
+    LEFT JOIN goals g_init ON kr_init.goal_id = g_init.id
     LEFT JOIN key_results kr ON wci.key_result_id = kr.id
+    LEFT JOIN goals g_kr ON kr.goal_id = g_kr.id
     WHERE wci.checkin_id = ?
   `, [checkin.id])
 
@@ -475,10 +483,14 @@ router.get('/team/:weekStart', (req, res) => {
         wci.*,
         i.name as initiative_name,
         i.category as category,
-        kr.title as key_result_title
+        kr.title as key_result_title,
+        COALESCE(g_init.title, g_kr.title) as goal_title
       FROM weekly_checkin_items wci
       LEFT JOIN initiatives i ON wci.initiative_id = i.id
+      LEFT JOIN key_results kr_init ON i.key_result_id = kr_init.id
+      LEFT JOIN goals g_init ON kr_init.goal_id = g_init.id
       LEFT JOIN key_results kr ON wci.key_result_id = kr.id
+      LEFT JOIN goals g_kr ON kr.goal_id = g_kr.id
       WHERE wci.checkin_id = ?
     `, [checkin.id])
     return { ...checkin, items }

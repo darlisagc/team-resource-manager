@@ -175,6 +175,7 @@ export default function WeeklyCheckin() {
               type,
               id: uniqueId,
               name: (isMisc || isBau) ? (item.notes || '') : (item.initiative_name || item.key_result_title),
+              goalTitle: item.goal_title,
               isOwner: isMisc || isBau ? true : isOwner,
               time: item.time_allocation_pct || 0,
               progress: item.progress_contribution_pct || 0
@@ -464,9 +465,9 @@ export default function WeeklyCheckin() {
     setSelectedWeek(current.toISOString().split('T')[0])
   }
 
-  // Helper to check if initiative is BAU
+  // Helper to check if initiative is BAU (Business as Usual only, not Events)
   const isBauInitiative = (init) => {
-    return init.goal_title?.includes('Business as Usual') || init.goal_title === 'Events'
+    return init.goal_title?.includes('Business as Usual')
   }
 
   // Items not yet added to "worked" list

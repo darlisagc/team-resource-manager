@@ -58,6 +58,10 @@ export default function GoalDetail() {
   const [allGoals, setAllGoals] = useState([])
   const [movingInitiative, setMovingInitiative] = useState(false)
 
+  // Events quarter filter
+  const [eventsQuarterFilter, setEventsQuarterFilter] = useState('All')
+  const [availableQuarters, setAvailableQuarters] = useState([])
+
   // Hours tracking state
   const [hoursModal, setHoursModal] = useState(null) // { initiativeId, initiativeName, totalHours }
   const [timeEntries, setTimeEntries] = useState([])
@@ -71,6 +75,25 @@ export default function GoalDetail() {
       fetchTeamMembers()
     }
   }, [id])
+
+  // Fetch available quarters for Events filter
+  useEffect(() => {
+    if (goal?.title === 'Events') {
+      fetchAvailableQuarters()
+    }
+  }, [goal])
+
+  const fetchAvailableQuarters = async () => {
+    try {
+      const res = await fetch('/api/dashboard/quarters', { headers: getAuthHeader() })
+      const data = await res.json()
+      // Filter out special quarters except keep 'All', remove 'Backlog', 'Ongoing'
+      const quarters = ['All', ...data.filter(q => q !== 'All' && q !== 'Backlog' && q !== 'Ongoing')]
+      setAvailableQuarters(quarters)
+    } catch (error) {
+      console.error('Failed to fetch quarters:', error)
+    }
+  }
 
   const fetchGoalDetails = async () => {
     try {
@@ -303,6 +326,27 @@ export default function GoalDetail() {
   const isManualAddAllowed = goal?.title?.includes('Business as Usual') || goal?.title === 'Events'
   const isBAUGoal = goal?.title?.includes('Business as Usual')
   const isEventsGoal = goal?.title === 'Events'
+
+  // Helper: derive quarter from a date string (e.g., "2024-06-15" -> "Q2 2024")
+  const getQuarterFromDate = (dateStr) => {
+    if (!dateStr) return null
+    const date = new Date(dateStr)
+    const month = date.getMonth() + 1 // 1-12
+    const year = date.getFullYear()
+    const quarter = Math.ceil(month / 3)
+    return `Q${quarter} ${year}`
+  }
+
+  // Filter initiatives for Events goal based on selected quarter
+  const filterInitiatives = (initiatives) => {
+    if (!isEventsGoal || eventsQuarterFilter === 'All' || !initiatives) {
+      return initiatives
+    }
+    return initiatives.filter(init => {
+      const initQuarter = getQuarterFromDate(init.start_date)
+      return initQuarter === eventsQuarterFilter
+    })
+  }
 
   const openAddInitiativeModal = (keyResultId) => {
     setAddInitiativeModal({ keyResultId })
@@ -586,10 +630,26 @@ export default function GoalDetail() {
 
       {/* Goal Stats */}
       <div className={`grid grid-cols-1 gap-4 ${isManualAddAllowed ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
-        <div className="hologram-card p-4">
-          <p className="text-sw-gray text-xs uppercase tracking-wider">Quarter</p>
-          <p className="text-sw-light text-lg font-orbitron mt-1">{goal.quarter || '-'}</p>
-        </div>
+        {/* Quarter - show dropdown for Events, static text for others */}
+        {isEventsGoal ? (
+          <div className="hologram-card p-4">
+            <p className="text-sw-gray text-xs uppercase tracking-wider mb-2">Filter by Quarter</p>
+            <select
+              value={eventsQuarterFilter}
+              onChange={(e) => setEventsQuarterFilter(e.target.value)}
+              className="w-full px-2 py-1 bg-sw-darker border border-sw-gray/30 rounded text-sw-light text-sm focus:border-sw-gold focus:outline-none"
+            >
+              {availableQuarters.map(q => (
+                <option key={q} value={q}>{q}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="hologram-card p-4">
+            <p className="text-sw-gray text-xs uppercase tracking-wider">Quarter</p>
+            <p className="text-sw-light text-lg font-orbitron mt-1">{goal.quarter || '-'}</p>
+          </div>
+        )}
         <div className="hologram-card p-4">
           <p className="text-sw-gray text-xs uppercase tracking-wider">Lead</p>
           <p className="text-sw-light text-lg font-orbitron mt-1">{goal.owner_name || '-'}</p>
@@ -774,12 +834,16 @@ export default function GoalDetail() {
                 </div>
 
                 {/* Initiatives (expanded) */}
-                {expandedKR === kr.id && kr.initiatives?.length > 0 && (
+                {expandedKR === kr.id && filterInitiatives(kr.initiatives)?.length > 0 && (
                   <div className="border-t border-sw-gray/20 bg-sw-darker/30">
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-orbitron text-sw-blue text-xs">
-                          INITIATIVES ({kr.initiatives.length})
+                          {isEventsGoal && eventsQuarterFilter !== 'All' ? (
+                            <>EVENTS ({filterInitiatives(kr.initiatives).length} of {kr.initiatives.length})</>
+                          ) : (
+                            <>INITIATIVES ({kr.initiatives.length})</>
+                          )}
                         </h4>
                         {isManualAddAllowed && (
                           <button
@@ -798,8 +862,9 @@ export default function GoalDetail() {
                       {isManualAddAllowed ? (
                         <div className="space-y-4">
                           {(() => {
-                            // Group initiatives by owner
-                            const byOwner = kr.initiatives.reduce((acc, init) => {
+                            // Filter and group initiatives by owner
+                            const filteredInits = filterInitiatives(kr.initiatives)
+                            const byOwner = filteredInits.reduce((acc, init) => {
                               const ownerName = init.owner_name || 'Unassigned'
                               if (!acc[ownerName]) acc[ownerName] = []
                               acc[ownerName].push(init)
@@ -965,7 +1030,7 @@ export default function GoalDetail() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {kr.initiatives.map(init => (
+                          {filterInitiatives(kr.initiatives).map(init => (
                             <div key={init.id} className="p-3 bg-sw-darker/50 rounded-lg">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
@@ -1078,9 +1143,13 @@ export default function GoalDetail() {
                 )}
 
                 {/* No initiatives message */}
-                {expandedKR === kr.id && (!kr.initiatives || kr.initiatives.length === 0) && (
+                {expandedKR === kr.id && (!kr.initiatives || kr.initiatives.length === 0 || filterInitiatives(kr.initiatives)?.length === 0) && (
                   <div className="border-t border-sw-gray/20 bg-sw-darker/30 p-4">
-                    <p className="text-sw-gray text-sm text-center mb-3">No initiatives for this key result</p>
+                    <p className="text-sw-gray text-sm text-center mb-3">
+                      {isEventsGoal && eventsQuarterFilter !== 'All' && kr.initiatives?.length > 0
+                        ? `No events for ${eventsQuarterFilter}`
+                        : 'No initiatives for this key result'}
+                    </p>
                     {isManualAddAllowed && (
                       <div className="text-center">
                         <button
