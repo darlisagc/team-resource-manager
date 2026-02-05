@@ -156,11 +156,6 @@ export default function PMOExport() {
     }
   }
 
-  // Clear preview
-  const clearPreview = () => {
-    setPreview(null)
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -282,12 +277,6 @@ export default function PMOExport() {
               <h2 className="font-orbitron text-sw-blue text-sm">EXPORT PREVIEW</h2>
               {preview && preview.metadata && (
                 <div className="flex gap-2">
-                  <button
-                    onClick={clearPreview}
-                    className="btn-secondary text-sm"
-                  >
-                    Clear
-                  </button>
                   <button
                     onClick={() => handleExport('csv')}
                     disabled={exporting}
