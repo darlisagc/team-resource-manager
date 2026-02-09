@@ -289,8 +289,8 @@ export default function GoalDetail() {
         link: updateForm.link || null
       }
 
-      // Add current_value for key results
-      if (updateModal.type === 'kr') {
+      // Add current_value for key results and initiatives with targets
+      if (updateModal.type === 'kr' || (updateModal.type === 'initiative' && updateModal.targetValue > 0)) {
         payload.current_value = updateForm.currentValue
       }
 
@@ -305,7 +305,7 @@ export default function GoalDetail() {
           setKeyResults(prev => prev.map(kr => ({
             ...kr,
             initiatives: kr.initiatives?.map(init =>
-              init.id === updateModal.id ? { ...init, status: updateForm.status } : init
+              init.id === updateModal.id ? { ...init, status: updateForm.status, current_value: updateForm.currentValue } : init
             )
           })))
         } else {
@@ -995,7 +995,7 @@ export default function GoalDetail() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                           <button
-                                            onClick={() => openUpdateModal('initiative', init.id, init.status || 'active', init.name)}
+                                            onClick={() => openUpdateModal('initiative', init.id, init.status || 'active', init.name, init.current_value, init.target_value)}
                                             className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer hover:opacity-80 ${getStatusColor(init.status)}`}
                                           >
                                             {init.status || 'active'}
@@ -1058,35 +1058,51 @@ export default function GoalDetail() {
                                       </button>
                                     )}
                                     <div className="flex items-center gap-2">
-                                      <div className="w-20 h-1.5 bg-sw-darker rounded-full overflow-hidden">
-                                        <div
-                                          className="h-full bg-sw-blue transition-all"
-                                          style={{ width: `${init.progress || 0}%` }}
-                                        />
-                                      </div>
-                                      {editingProgress?.id === init.id ? (
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          max="100"
-                                          value={editingProgress.progress}
-                                          onChange={(e) => setEditingProgress({ id: init.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
-                                          onBlur={() => updateInitiativeProgress(init.id, editingProgress.progress)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') updateInitiativeProgress(init.id, editingProgress.progress)
-                                            if (e.key === 'Escape') setEditingProgress(null)
-                                          }}
-                                          className="w-14 px-1 py-0.5 bg-sw-darker border border-sw-blue rounded text-sw-blue text-xs font-orbitron text-center focus:outline-none"
-                                          autoFocus
-                                        />
+                                      {init.target_value > 0 ? (
+                                        <>
+                                          <div className="w-20 h-1.5 bg-sw-darker rounded-full overflow-hidden">
+                                            <div
+                                              className={`h-full transition-all ${(init.current_value || 0) >= init.target_value ? 'bg-sw-green' : 'bg-sw-purple'}`}
+                                              style={{ width: `${Math.min(((init.current_value || 0) / init.target_value) * 100, 100)}%` }}
+                                            />
+                                          </div>
+                                          <span className={`text-xs font-orbitron ${(init.current_value || 0) >= init.target_value ? 'text-sw-green' : 'text-sw-purple'}`}>
+                                            {init.current_value || 0}/{init.target_value}
+                                          </span>
+                                        </>
                                       ) : (
-                                        <button
-                                          onClick={() => setEditingProgress({ id: init.id, progress: init.progress || 0 })}
-                                          className="text-sw-blue text-xs font-orbitron hover:bg-sw-blue/20 px-1 py-0.5 rounded transition-colors"
-                                          title="Click to edit progress"
-                                        >
-                                          {init.progress || 0}%
-                                        </button>
+                                        <>
+                                          <div className="w-20 h-1.5 bg-sw-darker rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-sw-blue transition-all"
+                                              style={{ width: `${init.progress || 0}%` }}
+                                            />
+                                          </div>
+                                          {editingProgress?.id === init.id ? (
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              value={editingProgress.progress}
+                                              onChange={(e) => setEditingProgress({ id: init.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                                              onBlur={() => updateInitiativeProgress(init.id, editingProgress.progress)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') updateInitiativeProgress(init.id, editingProgress.progress)
+                                                if (e.key === 'Escape') setEditingProgress(null)
+                                              }}
+                                              className="w-14 px-1 py-0.5 bg-sw-darker border border-sw-blue rounded text-sw-blue text-xs font-orbitron text-center focus:outline-none"
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <button
+                                              onClick={() => setEditingProgress({ id: init.id, progress: init.progress || 0 })}
+                                              className="text-sw-blue text-xs font-orbitron hover:bg-sw-blue/20 px-1 py-0.5 rounded transition-colors"
+                                              title="Click to edit progress"
+                                            >
+                                              {init.progress || 0}%
+                                            </button>
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                   </div>
@@ -1117,7 +1133,7 @@ export default function GoalDetail() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => openUpdateModal('initiative', init.id, init.status || 'active', init.name)}
+                                    onClick={() => openUpdateModal('initiative', init.id, init.status || 'active', init.name, init.current_value, init.target_value)}
                                     className={`px-2 py-1 rounded text-xs font-medium border cursor-pointer hover:opacity-80 ${getStatusColor(init.status)}`}
                                   >
                                     {init.status || 'active'}
@@ -1207,8 +1223,8 @@ export default function GoalDetail() {
               </div>
             </div>
 
-            {/* Progress (Key Results only) */}
-            {updateModal.type === 'kr' && (
+            {/* Progress (Key Results and Initiatives with targets) */}
+            {(updateModal.type === 'kr' || (updateModal.type === 'initiative' && updateModal.targetValue > 0)) && (
               <div className="mb-4">
                 <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">Progress</label>
                 <div className="flex items-center gap-3">

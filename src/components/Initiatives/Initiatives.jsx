@@ -331,6 +331,15 @@ export default function Initiatives() {
                               <span className="px-1.5 py-0.5 bg-sw-gold/20 text-sw-gold text-xs rounded">Miro</span>
                             )}
                             <span className="text-sw-light">{init.name}</span>
+                            {init.target_value != null && (
+                              <span className={`px-1.5 py-0.5 text-xs rounded font-orbitron ${
+                                init.current_value >= init.target_value
+                                  ? 'bg-sw-green/20 text-sw-green'
+                                  : 'bg-sw-purple/20 text-sw-purple'
+                              }`}>
+                                {init.current_value || 0} / {init.target_value}
+                              </span>
+                            )}
                           </div>
                           {init.owner_name && (
                             <p className="text-sw-gray text-xs mt-0.5">Lead: {init.owner_name}</p>

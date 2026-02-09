@@ -289,7 +289,7 @@ router.put('/:id', (req, res) => {
     return res.status(404).json({ message: 'Initiative not found' })
   }
 
-  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, comment, link, updated_by } = req.body
+  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, current_value, comment, link, updated_by } = req.body
 
   // If status is changing and there's a comment/link, record the update
   if (status && status !== existing.status) {
@@ -320,6 +320,7 @@ router.put('/:id', (req, res) => {
     start_date: start_date !== undefined ? start_date : existing.start_date,
     end_date: end_date !== undefined ? end_date : existing.end_date,
     estimated_hours: estimated_hours !== undefined ? estimated_hours : existing.estimated_hours,
+    current_value: current_value !== undefined ? current_value : existing.current_value,
     progress: newProgress
   }, 'id = ?', [req.params.id])
 

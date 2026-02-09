@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import compression from 'compression'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { authenticateToken } from './middleware/auth.js'
@@ -28,6 +29,7 @@ const app = express()
 const PORT = process.env.PORT || 3011
 
 // Middleware
+app.use(compression()) // Gzip compression for faster response times
 app.use(cors())
 app.use(express.json())
 
@@ -64,8 +66,17 @@ app.use('/api', authenticateToken, timeEntriesRoutes)
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '..', 'dist')
 
-  // Serve static files
-  app.use(express.static(distPath))
+  // Serve static files with cache headers
+  // Assets have hashed filenames, so we can cache them for 1 year
+  app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true
+  }))
+
+  // Other static files (index.html, etc.) - cache for 1 hour
+  app.use(express.static(distPath, {
+    maxAge: '1h'
+  }))
 
   // Handle client-side routing - serve index.html for all non-API routes
   app.get('*', (req, res, next) => {

@@ -329,3 +329,19 @@ CREATE TABLE IF NOT EXISTS initiative_time_entries (
 CREATE INDEX IF NOT EXISTS idx_init_time_entries_initiative ON initiative_time_entries(initiative_id);
 CREATE INDEX IF NOT EXISTS idx_init_time_entries_member ON initiative_time_entries(team_member_id);
 CREATE INDEX IF NOT EXISTS idx_init_time_entries_week ON initiative_time_entries(week_start);
+
+-- Initiative Updates (status changes and comments)
+CREATE TABLE IF NOT EXISTS initiative_updates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  initiative_id INTEGER NOT NULL,
+  previous_status TEXT,
+  new_status TEXT,
+  comment TEXT,
+  link TEXT,
+  updated_by INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (initiative_id) REFERENCES initiatives(id) ON DELETE CASCADE,
+  FOREIGN KEY (updated_by) REFERENCES team_members(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_initiative_updates_initiative ON initiative_updates(initiative_id);
