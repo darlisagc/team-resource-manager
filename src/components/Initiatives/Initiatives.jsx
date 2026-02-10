@@ -13,6 +13,9 @@ export default function Initiatives() {
   const [saving, setSaving] = useState({})
   const [quarters, setQuarters] = useState([])
   const [selectedQuarter, setSelectedQuarter] = useState('')
+  // Generic BAU and Events estimation (local only, not connected to goals)
+  const [bauEstimateHours, setBauEstimateHours] = useState(0)
+  const [eventsEstimateHours, setEventsEstimateHours] = useState(0)
 
   useEffect(() => {
     fetchQuarters()
@@ -111,6 +114,26 @@ export default function Initiatives() {
     }
   }
 
+  const updateKrEstimate = async (krId, hours) => {
+    setSaving(prev => ({ ...prev, [`kr-${krId}`]: true }))
+    try {
+      const res = await fetch(`/api/key-results/${krId}/estimate`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estimated_hours: parseFloat(hours) || 0 })
+      })
+      if (res.ok) {
+        setKeyResults(prev => prev.map(kr =>
+          kr.id === krId ? { ...kr, estimated_hours: parseFloat(hours) || 0 } : kr
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to update KR estimate:', error)
+    } finally {
+      setSaving(prev => ({ ...prev, [`kr-${krId}`]: false }))
+    }
+  }
+
   const moveToQuarter = async (initiativeId, targetQuarter) => {
     if (targetQuarter === selectedQuarter) return
 
@@ -137,9 +160,12 @@ export default function Initiatives() {
     const groups = {}
 
     // First, add all goals (filtered by selected quarter or show all)
+    // Exclude BAU and Events - they are handled as generic estimates
     goals.forEach(goal => {
-      // Filter by quarter if not "All Quarters"
       if (selectedQuarter !== 'All Quarters' && goal.quarter !== selectedQuarter) {
+        return
+      }
+      if (goal.title.includes('Business as Usual') || goal.title === 'Events') {
         return
       }
 
@@ -163,6 +189,7 @@ export default function Initiatives() {
         krProgress: kr.progress || 0,
         krTarget: kr.target_value,
         krCurrent: kr.current_value,
+        krEstimatedHours: kr.estimated_hours || 0,
         initiatives: []
       }
     })
@@ -187,9 +214,15 @@ export default function Initiatives() {
     return groups
   }, [initiatives, goals, keyResults, selectedQuarter])
 
-  // Calculate totals
+  // Calculate totals (exclude BAU/Events initiatives, use generic estimates instead)
   const totals = useMemo(() => {
-    const totalEstimatedHours = initiatives.reduce((sum, i) => sum + (i.estimated_hours || 0), 0)
+    const initiativeHours = initiatives
+      .filter(i => !i.goal_title?.includes('Business as Usual') && i.goal_title !== 'Events')
+      .reduce((sum, i) => sum + (i.estimated_hours || 0), 0)
+    const krHours = keyResults
+      .filter(kr => !kr.goal_title?.includes('Business as Usual') && kr.goal_title !== 'Events')
+      .reduce((sum, kr) => sum + (kr.estimated_hours || 0), 0)
+    const totalEstimatedHours = initiativeHours + krHours + bauEstimateHours + eventsEstimateHours
     const totalFTEWeeks = totalEstimatedHours / 40
 
     // Team capacity
@@ -207,7 +240,7 @@ export default function Initiatives() {
       remainingHours: availableHours - totalEstimatedHours,
       utilizationPercent: availableHours > 0 ? (totalEstimatedHours / availableHours) * 100 : 0
     }
-  }, [initiatives, teamMembers, timeOff])
+  }, [initiatives, teamMembers, timeOff, bauEstimateHours, eventsEstimateHours])
 
   if (loading && initiatives.length === 0) {
     return (
@@ -296,20 +329,73 @@ export default function Initiatives() {
           <div key={goalTitle} className="hologram-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-orbitron text-sw-gold text-lg">{goalTitle}</h3>
-              <span className="px-2 py-1 bg-sw-gray/20 text-sw-gray text-xs rounded">{goalData.goalQuarter}</span>
             </div>
 
             {Object.keys(goalData.keyResults).length === 0 ? (
               <p className="text-sw-gray text-sm italic">No key results</p>
-            ) : Object.entries(goalData.keyResults).map(([krTitle, krData]) => (
+            ) : Object.entries(goalData.keyResults).map(([krTitle, krData]) => {
+              const krFteWeeks = (krData.krEstimatedHours || 0) / 40
+              return (
               <div key={krTitle} className="mb-4 last:mb-0">
-                <h4 className="text-sw-blue text-sm mb-2 flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-sw-blue/20 text-sw-blue text-xs rounded">KR</span>
-                  {krTitle}
-                  {krData.krTarget && (
-                    <span className="text-sw-gray text-xs">({krData.krCurrent || 0}/{krData.krTarget})</span>
+                <div className="flex items-center gap-2 mb-2 p-2 bg-sw-blue/5 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="px-2 py-0.5 bg-sw-blue/20 text-sw-blue text-xs rounded">KR</span>
+                    <span className="text-sw-blue text-sm">{krTitle}</span>
+                    {krData.krTarget && (
+                      <span className="text-sw-gray text-xs">({krData.krCurrent || 0}/{krData.krTarget})</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={Math.floor(krFteWeeks) || ''}
+                      onChange={(e) => {
+                        const wholeFte = parseInt(e.target.value) || 0
+                        const currentFraction = krFteWeeks - Math.floor(krFteWeeks)
+                        const newFte = wholeFte + currentFraction
+                        const hoursValue = Math.round(newFte * 40)
+                        setKeyResults(prev => prev.map(kr =>
+                          kr.id === krData.krId ? { ...kr, estimated_hours: hoursValue } : kr
+                        ))
+                      }}
+                      onBlur={() => updateKrEstimate(krData.krId, keyResults.find(kr => kr.id === krData.krId)?.estimated_hours || 0)}
+                      placeholder="0"
+                      className="w-12 px-1 py-1 bg-sw-darker border border-sw-blue/50 rounded text-sw-blue text-right font-orbitron focus:border-sw-blue focus:outline-none"
+                      min="0"
+                    />
+                    <span className="text-sw-blue text-xs">FTE</span>
+                    <select
+                      value={Math.round((krFteWeeks - Math.floor(krFteWeeks)) * 100)}
+                      onChange={(e) => {
+                        const pct = parseInt(e.target.value) || 0
+                        const wholeFte = Math.floor(krFteWeeks)
+                        const newFte = wholeFte + (pct / 100)
+                        const hoursValue = Math.round(newFte * 40)
+                        setKeyResults(prev => prev.map(kr =>
+                          kr.id === krData.krId ? { ...kr, estimated_hours: hoursValue } : kr
+                        ))
+                        updateKrEstimate(krData.krId, hoursValue)
+                      }}
+                      className="w-16 px-1 py-1 bg-sw-darker border border-sw-blue/50 rounded text-sw-blue text-xs font-orbitron focus:border-sw-blue focus:outline-none"
+                    >
+                      <option value="0">0%</option>
+                      <option value="25">25%</option>
+                      <option value="50">50%</option>
+                      <option value="75">75%</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1 text-sw-gray">
+                    <span className="text-xs">=</span>
+                    <span className="text-sw-blue font-orbitron text-sm">{krData.krEstimatedHours || 0}</span>
+                    <span className="text-sw-gray text-xs">hrs</span>
+                  </div>
+
+                  {saving[`kr-${krData.krId}`] && (
+                    <span className="text-sw-blue text-xs animate-pulse">Saving...</span>
                   )}
-                </h4>
+                </div>
 
                 <div className="space-y-2 ml-4">
                   {(!krData.initiatives || krData.initiatives.length === 0) ? (
@@ -416,24 +502,116 @@ export default function Initiatives() {
                   })}
                 </div>
               </div>
-            ))}
+            )})}
 
             {/* Goal subtotal */}
             <div className="mt-4 pt-3 border-t border-sw-gray/20 flex justify-between text-sm">
               <span className="text-sw-gray">Goal subtotal:</span>
               <div>
                 <span className="text-sw-gold font-orbitron">
-                  {Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0)}h
+                  {Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.krEstimatedHours || 0) + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0)}h
                 </span>
                 <span className="text-sw-gray ml-2">
-                  ({(Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0) / 40).toFixed(1)} FTE wks)
+                  ({(Object.values(goalData.keyResults).reduce((sum, kr) => sum + (kr.krEstimatedHours || 0) + (kr.initiatives || []).reduce((s, i) => s + (i.estimated_hours || 0), 0), 0) / 40).toFixed(1)} FTE wks)
                 </span>
               </div>
             </div>
           </div>
         ))}
 
-        {initiatives.length === 0 && (
+        {/* Generic BAU Estimation */}
+        <div className="hologram-card p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-orbitron text-sw-gold text-lg">Business as Usual (BAU)</h3>
+            <span className="px-2 py-1 bg-sw-gold/20 text-sw-gold text-xs rounded">Generic Estimate</span>
+          </div>
+          <p className="text-sw-gray text-sm mb-4">Estimate total FTE hours needed for BAU activities (not linked to specific tasks)</p>
+          <div className="flex items-center gap-4 p-3 bg-sw-darker/50 rounded-lg">
+            <span className="text-sw-light flex-1">All BAU / Operational Work</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                value={Math.floor(bauEstimateHours / 40) || ''}
+                onChange={(e) => {
+                  const wholeFte = parseInt(e.target.value) || 0
+                  const currentFraction = (bauEstimateHours / 40) - Math.floor(bauEstimateHours / 40)
+                  setBauEstimateHours(Math.round((wholeFte + currentFraction) * 40))
+                }}
+                placeholder="0"
+                className="w-12 px-1 py-1 bg-sw-darker border border-sw-gold/50 rounded text-sw-gold text-right font-orbitron focus:border-sw-gold focus:outline-none"
+                min="0"
+              />
+              <span className="text-sw-gold text-xs">FTE</span>
+              <select
+                value={Math.round(((bauEstimateHours / 40) - Math.floor(bauEstimateHours / 40)) * 100)}
+                onChange={(e) => {
+                  const pct = parseInt(e.target.value) || 0
+                  const wholeFte = Math.floor(bauEstimateHours / 40)
+                  setBauEstimateHours(Math.round((wholeFte + (pct / 100)) * 40))
+                }}
+                className="w-16 px-1 py-1 bg-sw-darker border border-sw-gold/50 rounded text-sw-gold text-xs font-orbitron focus:border-sw-gold focus:outline-none"
+              >
+                <option value="0">0%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 text-sw-gray">
+              <span className="text-xs">=</span>
+              <span className="text-sw-light font-orbitron text-sm">{bauEstimateHours}</span>
+              <span className="text-sw-gray text-xs">hrs</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Generic Events Estimation */}
+        <div className="hologram-card p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-orbitron text-sw-gold text-lg">Events</h3>
+            <span className="px-2 py-1 bg-sw-purple/20 text-sw-purple text-xs rounded">Generic Estimate</span>
+          </div>
+          <p className="text-sw-gray text-sm mb-4">Estimate total FTE hours needed for events and conferences (not linked to specific events)</p>
+          <div className="flex items-center gap-4 p-3 bg-sw-darker/50 rounded-lg">
+            <span className="text-sw-light flex-1">All Events / Conferences</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                value={Math.floor(eventsEstimateHours / 40) || ''}
+                onChange={(e) => {
+                  const wholeFte = parseInt(e.target.value) || 0
+                  const currentFraction = (eventsEstimateHours / 40) - Math.floor(eventsEstimateHours / 40)
+                  setEventsEstimateHours(Math.round((wholeFte + currentFraction) * 40))
+                }}
+                placeholder="0"
+                className="w-12 px-1 py-1 bg-sw-darker border border-sw-gold/50 rounded text-sw-gold text-right font-orbitron focus:border-sw-gold focus:outline-none"
+                min="0"
+              />
+              <span className="text-sw-gold text-xs">FTE</span>
+              <select
+                value={Math.round(((eventsEstimateHours / 40) - Math.floor(eventsEstimateHours / 40)) * 100)}
+                onChange={(e) => {
+                  const pct = parseInt(e.target.value) || 0
+                  const wholeFte = Math.floor(eventsEstimateHours / 40)
+                  setEventsEstimateHours(Math.round((wholeFte + (pct / 100)) * 40))
+                }}
+                className="w-16 px-1 py-1 bg-sw-darker border border-sw-gold/50 rounded text-sw-gold text-xs font-orbitron focus:border-sw-gold focus:outline-none"
+              >
+                <option value="0">0%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 text-sw-gray">
+              <span className="text-xs">=</span>
+              <span className="text-sw-light font-orbitron text-sm">{eventsEstimateHours}</span>
+              <span className="text-sw-gray text-xs">hrs</span>
+            </div>
+          </div>
+        </div>
+
+        {Object.keys(groupedByGoal).length === 0 && initiatives.length === 0 && (
           <div className="hologram-card p-8 text-center">
             <p className="text-sw-gray">No initiatives found for {selectedQuarter}</p>
             <p className="text-sw-gray text-sm mt-2">Import from Miro or Leapsome to get started</p>

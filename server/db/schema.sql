@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS initiatives (
   key_result_id INTEGER,
   project_priority TEXT CHECK(project_priority IN ('P1', 'P2', 'P3', 'P4')),
   team TEXT,
-  status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed', 'on-hold', 'cancelled')),
+  status TEXT DEFAULT 'active' CHECK(status IN ('draft', 'active', 'in-progress', 'completed', 'on-hold', 'cancelled')),
   owner_id INTEGER,
   start_date DATE,
   end_date DATE,

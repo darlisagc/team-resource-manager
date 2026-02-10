@@ -41,12 +41,6 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminRoute({ children }) {
-  const { user } = useAuth()
-
-  if (user?.username !== 'admin') {
-    return <Navigate to="/dashboard" replace />
-  }
-
   return children
 }
 

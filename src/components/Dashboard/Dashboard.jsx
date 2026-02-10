@@ -85,7 +85,8 @@ export default function Dashboard() {
     .map(m => ({
       name: m.name.split(' ')[0],
       timeOff: m.timeOffPercent || 0,
-      work: m.utilization - (m.timeOffPercent || 0),
+      events: m.eventPercent || 0,
+      work: m.utilization - (m.timeOffPercent || 0) - (m.eventPercent || 0),
       total: m.utilization,
       fill: getProgressHexColor(m.utilization, { isUtilization: true })
     }))
@@ -177,7 +178,7 @@ export default function Dashboard() {
             <MetricCard
               title="Team Utilization"
               value={`${dashboardData.utilization.average.toFixed(1)}%`}
-              subtitle={`${dashboardData.utilization.workPercent.toFixed(1)}% work + ${dashboardData.utilization.timeOffPercent.toFixed(1)}% time off`}
+              subtitle={`${dashboardData.utilization.workPercent.toFixed(1)}% work + ${(dashboardData.utilization.eventPercent || 0).toFixed(1)}% events + ${dashboardData.utilization.timeOffPercent.toFixed(1)}% time off`}
               secondarySubtitle={`${dashboardData.team.totalMembers} crew members • ${totalFTE.toFixed(1)} FTE`}
               status={getUtilizationStatus(dashboardData.utilization.average)}
             />
@@ -213,14 +214,16 @@ export default function Dashboard() {
                   <YAxis type="category" dataKey="name" stroke="#f0f0f0" width={80} />
                   <Tooltip
                     contentStyle={{ background: '#1a1a2e', border: '1px solid #FFE81F' }}
-                    formatter={(value, name) => [`${value.toFixed(1)}%`, name === 'timeOff' ? 'Time Off' : 'Work']}
+                    formatter={(value, name) => [`${value.toFixed(1)}%`, name === 'timeOff' ? 'Time Off' : name === 'events' ? 'Events' : 'Work']}
                   />
                   <Bar dataKey="timeOff" stackId="utilization" fill={COLORS.red} name="timeOff" />
+                  <Bar dataKey="events" stackId="utilization" fill={COLORS.purple} name="events" />
                   <Bar dataKey="work" stackId="utilization" fill={COLORS.blue} name="work" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
               <div className="flex justify-center gap-4 mt-4 text-xs">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.red}}></span> Time Off</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.purple}}></span> Events</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.blue}}></span> Work Allocation</span>
               </div>
             </div>

@@ -62,7 +62,64 @@ export function transaction(fn) {
   return db.transaction(fn)()
 }
 
+// Migrations
+function runMigrations() {
+  // Migration: Add 'draft' and 'in-progress' to initiatives status constraint
+  try {
+    db.prepare("INSERT INTO initiatives (name, status) VALUES ('__migration_test__', 'draft')").run()
+    db.prepare("DELETE FROM initiatives WHERE name = '__migration_test__'").run()
+  } catch (e) {
+    // Constraint doesn't allow 'draft' yet - update it by reading actual columns
+    db.pragma('foreign_keys = OFF')
+    try {
+      const cols = db.prepare("PRAGMA table_info(initiatives)").all()
+      const colNames = cols.map(c => c.name).join(', ')
+
+      db.transaction(() => {
+        db.exec(`
+          CREATE TABLE initiatives_migrated (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            project_priority TEXT,
+            team TEXT,
+            status TEXT DEFAULT 'active' CHECK(status IN ('draft', 'active', 'in-progress', 'completed', 'on-hold', 'cancelled')),
+            parent_goal_id INTEGER,
+            leapsome_external_id TEXT,
+            start_date DATE,
+            end_date DATE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            external_id TEXT,
+            description TEXT,
+            key_result_id INTEGER,
+            owner_id INTEGER,
+            source TEXT DEFAULT 'manual',
+            progress INTEGER DEFAULT 0,
+            estimated_hours REAL DEFAULT 0,
+            actual_hours REAL DEFAULT 0,
+            category TEXT,
+            current_value REAL DEFAULT 0,
+            target_value REAL,
+            FOREIGN KEY (key_result_id) REFERENCES key_results(id) ON DELETE SET NULL,
+            FOREIGN KEY (owner_id) REFERENCES team_members(id) ON DELETE SET NULL
+          );
+          INSERT INTO initiatives_migrated SELECT ${colNames} FROM initiatives;
+          DROP TABLE initiatives;
+          ALTER TABLE initiatives_migrated RENAME TO initiatives;
+          CREATE INDEX IF NOT EXISTS idx_initiatives_key_result ON initiatives(key_result_id);
+          CREATE INDEX IF NOT EXISTS idx_initiatives_status ON initiatives(status);
+          CREATE INDEX IF NOT EXISTS idx_initiatives_priority ON initiatives(project_priority);
+        `)
+      })()
+      console.log('Migration: Updated initiatives status constraint')
+    } finally {
+      db.pragma('foreign_keys = ON')
+    }
+  }
+}
+
 // Initialize on import
 initializeDatabase()
+runMigrations()
 
 export default db

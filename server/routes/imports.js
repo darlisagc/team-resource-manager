@@ -1202,7 +1202,7 @@ router.get('/duplicates/pending', (req, res) => {
   res.json(matches)
 })
 
-// Import tasks from Miro CSV
+// Import initiatives from Miro CSV (creates initiatives linked to goals/KRs)
 router.post('/miro/tasks', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'CSV file is required' })
@@ -1239,22 +1239,36 @@ router.post('/miro/tasks', upload.single('file'), (req, res) => {
     memberMap.set('gio', memberMap.get('giovanni'))
     memberMap.set('mati', memberMap.get('mateusz'))
 
-    // Get existing tasks for duplicate detection
-    const existingTasks = getAll('SELECT id, title FROM tasks')
+    // Get existing initiatives for duplicate detection
+    const existingInitiatives = getAll('SELECT id, name FROM initiatives')
     const existingTitlesMap = new Map()
-    existingTasks.forEach(t => {
-      existingTitlesMap.set(t.title.toLowerCase().trim(), t.id)
+    existingInitiatives.forEach(i => {
+      existingTitlesMap.set(i.name.toLowerCase().trim(), i.id)
     })
+
+    // Cache for goal → first key result lookups
+    const goalKrCache = new Map()
+    function getFirstKrForGoal(goalId) {
+      if (goalKrCache.has(goalId)) return goalKrCache.get(goalId)
+      const kr = getOne('SELECT id FROM key_results WHERE goal_id = ? ORDER BY id LIMIT 1', [goalId])
+      goalKrCache.set(goalId, kr ? kr.id : null)
+      return kr ? kr.id : null
+    }
+
+    // Find BAU goal and its first KR
+    const bauGoal = getOne("SELECT id FROM goals WHERE title LIKE '%Business as Usual%' ORDER BY id DESC LIMIT 1")
+    const bauKrId = bauGoal ? getFirstKrForGoal(bauGoal.id) : null
 
     records.forEach((record, index) => {
       try {
         const externalId = record.id || record.ID || record.card_id
         const title = record.title || record.Title || record.name || record.Name || record.content
         const description = record.description || record.Description
-        const status = (record.status || record.Status || 'todo').toLowerCase()
-        const priority = (record.priority || record.Priority || 'medium').toLowerCase()
-        const effort = parseFloat(record.effort || record.estimate || record.hours) || null
+        const status = (record.status || record.Status || 'active').toLowerCase().trim()
+        const priority = (record.priority || record.Priority || '').toUpperCase().trim()
         const assignees = record.assignees || record.Assignees || record.assigned_to || record.owner
+        const goalId = record.goal_id || ''
+        const bauCategory = record.bau_category || ''
 
         if (!title) {
           errors.push({ row: index + 2, error: 'Title is required' })
@@ -1270,53 +1284,77 @@ router.post('/miro/tasks', upload.single('file'), (req, res) => {
             skipped.push({ title, reason: 'exact duplicate' })
             return
           } else if (duplicateAction === 'replace') {
-            // Delete existing task and its assignees
-            run('DELETE FROM task_assignees WHERE task_id = ?', [existingId])
-            deleteRow('tasks', 'id = ?', [existingId])
+            // Delete existing initiative and its assignments
+            run('DELETE FROM initiative_assignments WHERE initiative_id = ?', [existingId])
+            deleteRow('initiatives', 'id = ?', [existingId])
             replaced.push({ title, oldId: existingId })
           }
           // If 'keep', we just create a new one (duplicate allowed)
         } else if (duplicateAction === 'skip') {
           // Also check for similar matches when skipping
-          const allTasks = getAll('SELECT id, title FROM tasks')
-          for (const existing of allTasks) {
-            const sim = calculateSimilarity(title, existing.title)
+          const allInitiatives = getAll('SELECT id, name FROM initiatives')
+          for (const existing of allInitiatives) {
+            const sim = calculateSimilarity(title, existing.name)
             if (sim >= 50) {
-              skipped.push({ title, reason: `${sim}% similar to "${existing.title}"` })
+              skipped.push({ title, reason: `${sim}% similar to "${existing.name}"` })
               return
             }
           }
         }
 
-        // Normalize status
-        let normalizedStatus = 'todo'
-        if (status.includes('progress') || status.includes('doing')) normalizedStatus = 'in-progress'
-        else if (status.includes('done') || status.includes('complete')) normalizedStatus = 'done'
-        else if (status.includes('block')) normalizedStatus = 'blocked'
+        // Normalize status to match initiatives table constraint
+        let normalizedStatus = 'active'
+        if (status === 'draft') normalizedStatus = 'draft'
+        else if (status === 'active') normalizedStatus = 'active'
+        else if (status === 'in-progress' || status.includes('progress') || status.includes('doing')) normalizedStatus = 'in-progress'
+        else if (status === 'completed' || status.includes('done') || status.includes('complete')) normalizedStatus = 'completed'
+        else if (status === 'on-hold' || status.includes('hold')) normalizedStatus = 'on-hold'
+        else if (status === 'cancelled' || status.includes('cancel')) normalizedStatus = 'cancelled'
 
-        // Normalize priority
-        let normalizedPriority = 'medium'
-        if (priority.includes('low')) normalizedPriority = 'low'
-        else if (priority.includes('high')) normalizedPriority = 'high'
-        else if (priority.includes('critical') || priority.includes('urgent')) normalizedPriority = 'critical'
+        // Normalize priority to P1-P4
+        let normalizedPriority = null
+        if (priority === 'P1' || priority === 'P2' || priority === 'P3' || priority === 'P4') {
+          normalizedPriority = priority
+        }
 
-        const result = insert('tasks', {
+        // Determine key_result_id based on goal association
+        let keyResultId = null
+        let category = null
+
+        if (goalId && goalId !== 'bau' && goalId !== '') {
+          // Linked to a specific goal - find its first KR
+          keyResultId = getFirstKrForGoal(parseInt(goalId))
+        } else if (goalId === 'bau' && bauCategory) {
+          // BAU with specific category
+          keyResultId = bauKrId
+          category = bauCategory
+        } else {
+          // Default: BAU (no goal selected)
+          keyResultId = bauKrId
+        }
+
+        const result = insert('initiatives', {
           external_id: externalId || null,
-          title,
+          name: title,
           description: description || null,
+          key_result_id: keyResultId,
+          project_priority: normalizedPriority,
+          team: 'Ecosystem Engineering',
           status: normalizedStatus,
-          priority: normalizedPriority,
-          effort_estimate: effort,
-          source: 'miro'
+          owner_id: null,
+          source: 'miro',
+          progress: 0,
+          category: category || null
         })
 
         // Update the map so subsequent duplicates in same import are detected
         existingTitlesMap.set(normalizedTitle, result.lastInsertRowid)
 
-        // Add assignees with improved matching
+        // Add assignees as initiative_assignments with improved matching
+        let firstAssigneeId = null
         if (assignees) {
           const assigneeNames = assignees.split(/[,;]/).map(n => n.trim()).filter(n => n)
-          assigneeNames.forEach(name => {
+          assigneeNames.forEach((name, i) => {
             const normalizedName = name.toLowerCase()
             let memberId = memberMap.get(normalizedName)
 
@@ -1330,15 +1368,21 @@ router.post('/miro/tasks', upload.single('file'), (req, res) => {
             }
 
             if (memberId) {
-              run('INSERT OR IGNORE INTO task_assignees (task_id, team_member_id, source) VALUES (?, ?, ?)',
-                [result.lastInsertRowid, memberId, 'miro'])
+              run('INSERT OR IGNORE INTO initiative_assignments (initiative_id, team_member_id, role, source) VALUES (?, ?, ?, ?)',
+                [result.lastInsertRowid, memberId, i === 0 ? 'Lead' : 'Contributor', 'miro'])
+              if (i === 0) firstAssigneeId = memberId
             } else if (name.length > 1) {
               unmatchedAssignees.add(name)
             }
           })
         }
 
-        imported.push({ id: result.lastInsertRowid, title })
+        // Set first assignee as owner
+        if (firstAssigneeId) {
+          run('UPDATE initiatives SET owner_id = ? WHERE id = ?', [firstAssigneeId, result.lastInsertRowid])
+        }
+
+        imported.push({ id: result.lastInsertRowid, title, goalId: goalId || 'bau' })
       } catch (error) {
         errors.push({ row: index + 2, error: error.message })
       }

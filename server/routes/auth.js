@@ -5,11 +5,8 @@ import { generateToken, authenticateToken } from '../middleware/auth.js'
 
 const router = Router()
 
-// Admin-only middleware
+// Admin-only middleware (all authenticated users are admins)
 function adminOnly(req, res, next) {
-  if (req.user?.username !== 'admin') {
-    return res.status(403).json({ message: 'Access denied. Admin only.' })
-  }
   next()
 }
 
@@ -20,7 +17,7 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ message: 'Username and password are required' })
   }
 
-  const user = getOne('SELECT * FROM users WHERE username = ?', [username])
+  const user = getOne('SELECT * FROM users WHERE username = ? COLLATE NOCASE', [username])
 
   if (!user) {
     return res.status(401).json({ message: 'Invalid credentials' })

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getAll, getOne, insert, update, deleteRow, run } from '../db/database.js'
+import { getQuarterDateRange } from '../utils/dateUtils.js'
 
 const router = Router()
 
@@ -193,7 +194,6 @@ router.get('/member/:memberId/week/:weekStart', (req, res) => {
 // Create or update a weekly check-in
 router.post('/', (req, res) => {
   const userId = req.user.id
-  const username = req.user.username
   const { week_start, items, notes, mood, submit, member_id } = req.body
 
   if (!week_start) {
@@ -218,21 +218,15 @@ router.post('/', (req, res) => {
     return res.status(404).json({ message: 'Team member not found' })
   }
 
-  // Security: Users can only submit check-ins for themselves (admin can submit for anyone)
-  if (username !== 'admin') {
-    const memberFirstName = member.name.split(' ')[0].toLowerCase()
-    if (username.toLowerCase() !== memberFirstName) {
-      return res.status(403).json({ message: 'You can only submit check-ins for yourself' })
-    }
-  }
+  // All authenticated users have admin access - can submit check-ins for any member
 
   // Calculate total allocation
   const totalAllocation = items.reduce((sum, item) => sum + (item.time_allocation_pct || 0), 0)
 
-  // Validate total doesn't exceed 100%
-  if (totalAllocation > 100) {
+  // Validate total doesn't exceed 120% (allows overtime)
+  if (totalAllocation > 120) {
     return res.status(400).json({
-      message: 'Total time allocation cannot exceed 100%',
+      message: 'Total time allocation cannot exceed 120%',
       total: totalAllocation
     })
   }
@@ -458,6 +452,66 @@ router.get('/history', (req, res) => {
   `, [member.id, parseInt(limit)])
 
   res.json(checkins)
+})
+
+// Get analytics data for a quarter (goal progress + mood trends)
+router.get('/analytics', (req, res) => {
+  const quarter = req.query.quarter
+  if (!quarter) {
+    return res.status(400).json({ message: 'quarter query parameter is required' })
+  }
+
+  const { startDate, endDate } = getQuarterDateRange(quarter)
+
+  // Goal progress: all goals for the quarter excluding BAU/Backlog
+  const goalProgress = getAll(`
+    SELECT id, title, progress, status, quarter
+    FROM goals
+    WHERE quarter = ?
+      AND title NOT LIKE '%Business as Usual%'
+      AND title NOT LIKE '%Backlog%'
+    ORDER BY progress DESC
+  `, [quarter])
+
+  // Mood trends: aggregate weekly check-ins by week within the quarter date range
+  const moodScores = {
+    '🔥': 4, '😊': 3, '😐': 2, '🤔': 1
+  }
+
+  const weeklyCheckins = getAll(`
+    SELECT week_start, mood
+    FROM weekly_checkins
+    WHERE week_start >= ? AND week_start <= ?
+      AND status = 'submitted'
+      AND mood IS NOT NULL
+    ORDER BY week_start
+  `, [startDate, endDate])
+
+  // Group by week
+  const weekMap = {}
+  for (const row of weeklyCheckins) {
+    if (!weekMap[row.week_start]) {
+      weekMap[row.week_start] = { week: row.week_start, moods: [] }
+    }
+    weekMap[row.week_start].moods.push(row.mood)
+  }
+
+  const moodTrends = Object.values(weekMap).map(entry => {
+    const moodCounts = {}
+    let totalScore = 0
+    for (const mood of entry.moods) {
+      moodCounts[mood] = (moodCounts[mood] || 0) + 1
+      totalScore += moodScores[mood] || 3
+    }
+    return {
+      week: entry.week,
+      avgScore: Math.round((totalScore / entry.moods.length) * 10) / 10,
+      totalCheckins: entry.moods.length,
+      moodCounts
+    }
+  })
+
+  res.json({ goalProgress, moodTrends })
 })
 
 // Get team check-ins for a week (manager view)

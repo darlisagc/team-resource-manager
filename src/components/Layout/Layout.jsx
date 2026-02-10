@@ -32,7 +32,7 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="flex-1 py-4">
           {navItems
-            .filter(item => !item.adminOnly || user?.username === 'admin')
+            .filter(item => item)
             .map((item) => (
             <NavLink
               key={item.path}
@@ -78,9 +78,11 @@ export default function Layout() {
         {/* Header */}
         <header className="h-16 bg-sw-darker/50 backdrop-blur border-b border-sw-gold/20 flex items-center justify-between px-6">
           <div>
-            <h2 className="font-orbitron text-sw-light text-lg">
-              {navItems.find(item => item.path === location.pathname)?.label || 'Unknown Sector'}
-            </h2>
+            {!location.pathname.startsWith('/goals') && (
+              <h2 className="font-orbitron text-sw-light text-lg">
+                {navItems.find(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))?.label || 'Command Center'}
+              </h2>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">

@@ -99,7 +99,20 @@ router.get('/', (req, res) => {
                 AND week_start >= ? AND week_start <= ?), 0) as weeks_reported,
       COALESCE((SELECT SUM(hours) FROM time_off
                 WHERE team_member_id = tm.id
-                AND start_date >= ? AND end_date <= ?), 0) as time_off_hours
+                AND start_date >= ? AND end_date <= ?), 0) as time_off_hours,
+      COALESCE((SELECT SUM(
+                  CASE WHEN i.estimated_hours > 0 THEN i.estimated_hours
+                       WHEN i.start_date IS NOT NULL AND i.end_date IS NOT NULL
+                       THEN (julianday(i.end_date) - julianday(i.start_date) + 1) * 8
+                       ELSE 8
+                  END
+                ) FROM initiatives i
+                JOIN initiative_assignments ia ON i.id = ia.initiative_id
+                JOIN key_results kr ON i.key_result_id = kr.id
+                JOIN goals g ON kr.goal_id = g.id
+                WHERE ia.team_member_id = tm.id
+                AND g.title = 'Events'
+                AND i.status != 'cancelled'), 0) as event_hours
     FROM team_members tm
     GROUP BY tm.id
     ORDER BY total_allocation_sum DESC
@@ -114,9 +127,10 @@ router.get('/', (req, res) => {
     // Each week's allocation % * weekly_hours = hours worked that week
     // Sum of all weeks = total hours worked
     const hoursWorked = (member.total_allocation_sum / 100) * member.weekly_hours
-    // Utilization = (hours worked + time off) / total capacity * 100
+    const eventHours = member.event_hours || 0
+    // Utilization = (hours worked + time off + events) / total capacity * 100
     const utilization = totalCapacityHours > 0
-      ? ((hoursWorked + member.time_off_hours) / totalCapacityHours) * 100
+      ? ((hoursWorked + member.time_off_hours + eventHours) / totalCapacityHours) * 100
       : 0
 
     return {
@@ -131,7 +145,9 @@ router.get('/', (req, res) => {
       utilization: Math.round(utilization * 10) / 10,
       weeksReported: member.weeks_reported,
       timeOffHours: member.time_off_hours,
-      timeOffPercent: totalCapacityHours > 0 ? Math.round((member.time_off_hours / totalCapacityHours) * 1000) / 10 : 0
+      timeOffPercent: totalCapacityHours > 0 ? Math.round((member.time_off_hours / totalCapacityHours) * 1000) / 10 : 0,
+      eventHours: eventHours,
+      eventPercent: totalCapacityHours > 0 ? Math.round((eventHours / totalCapacityHours) * 1000) / 10 : 0
     }
   })
 
@@ -139,11 +155,15 @@ router.get('/', (req, res) => {
   const totalCapacityHours = utilizationData.reduce((sum, m) => sum + m.totalCapacityHours, 0)
   const totalHoursWorked = utilizationData.reduce((sum, m) => sum + m.hoursWorked, 0)
   const totalTimeOffHours = utilizationData.reduce((sum, m) => sum + m.timeOffHours, 0)
+  const totalEventHours = utilizationData.reduce((sum, m) => sum + m.eventHours, 0)
   const avgUtilization = totalCapacityHours > 0
-    ? ((totalTimeOffHours + totalHoursWorked) / totalCapacityHours) * 100
+    ? ((totalTimeOffHours + totalHoursWorked + totalEventHours) / totalCapacityHours) * 100
     : 0
   const timeOffPercent = totalCapacityHours > 0
     ? (totalTimeOffHours / totalCapacityHours) * 100
+    : 0
+  const eventPercent = totalCapacityHours > 0
+    ? (totalEventHours / totalCapacityHours) * 100
     : 0
 
   const overAllocated = utilizationData.filter(m => m.utilization > 100)
@@ -206,10 +226,12 @@ router.get('/', (req, res) => {
     utilization: {
       average: Math.round(avgUtilization * 10) / 10,
       timeOffPercent: Math.round(timeOffPercent * 10) / 10,
+      eventPercent: Math.round(eventPercent * 10) / 10,
       workPercent: totalCapacityHours > 0 ? Math.round((totalHoursWorked / totalCapacityHours) * 1000) / 10 : 0,
       totalCapacityHours,
       totalHoursWorked,
       totalTimeOffHours,
+      totalEventHours,
       overAllocatedCount: overAllocated.length,
       underUtilizedCount: underUtilized.length
     },

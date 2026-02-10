@@ -206,6 +206,19 @@
       font-weight: bold;
     }
 
+    /* Updated Badge */
+    .updated-badge {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      background: #FF9800;
+      color: #fff;
+      font-size: 0.55rem;
+      padding: 3px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
     /* Frequency Badge */
     .freq-badge {
       display: inline-block;
@@ -320,6 +333,34 @@
       font-size: 0.75rem;
     }
 
+    /* Feature List */
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .feature-card {
+      background: rgba(26, 26, 46, 0.9);
+      border: 1px solid rgba(75, 213, 238, 0.2);
+      border-radius: 10px;
+      padding: 15px;
+    }
+
+    .feature-card-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      color: #4BD5EE;
+      margin-bottom: 8px;
+    }
+
+    .feature-card-desc {
+      font-size: 0.65rem;
+      color: #888;
+      line-height: 1.6;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .flow {
@@ -365,7 +406,7 @@
 
         <div class="node node-page">
           <span class="time-badge">10m</span>
-          <div class="node-title">SETTINGS</div>
+          <div class="node-title">CONTROL PANEL</div>
           <div class="node-desc">Open Settings page</div>
         </div>
 
@@ -375,22 +416,29 @@
           <div class="parallel-container">
             <span class="parallel-label">Run in Parallel</span>
             <div class="node node-action" style="min-width: 180px;">
-              <div class="node-title">SYNC CALENDAR</div>
+              <span class="updated-badge">UPD</span>
+              <div class="node-title">SYNC CALENDARS</div>
               <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+                Multiple iCal feeds<br>
                 PTO, Vacation, Sick days<br>
                 Holidays, Birthdays<br>
                 Parental/Maternity leave<br>
-                Remote work, Events<br>
-                Time Off in Lieu, Unpaid
+                Remote work, Events
               </div>
             </div>
             <div class="node node-action">
               <div class="node-title">IMPORT GOALS</div>
               <div class="node-desc">Leapsome OKRs</div>
             </div>
-            <div class="node node-action">
-              <div class="node-title">IMPORT TASKS</div>
-              <div class="node-desc">Miro board items</div>
+            <div class="node node-action" style="min-width: 190px;">
+              <span class="updated-badge">UPD</span>
+              <div class="node-title">IMPORT FROM MIRO</div>
+              <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+                Creates initiatives<br>
+                Assign to Goal or BAU<br>
+                Status: draft/active/etc<br>
+                Priority: P1-P4
+              </div>
             </div>
           </div>
         </div>
@@ -405,23 +453,18 @@
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <div class="node-title">LINK TASKS</div>
-          <div class="node-desc">Connect to goals</div>
+          <span class="updated-badge">UPD</span>
+          <div class="node-title">LINK INITIATIVES</div>
+          <div class="node-desc">Link to Key Results</div>
         </div>
 
         <div class="arrow">→</div>
 
         <div class="node node-page">
+          <span class="updated-badge">UPD</span>
           <span class="time-badge">15m</span>
           <div class="node-title">ESTIMATION</div>
-          <div class="node-desc">Quarter planning</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-action">
-          <div class="node-title">ASSIGN ROLES</div>
-          <div class="node-desc">Lead, Contributor, Support</div>
+          <div class="node-desc">Quarter planning + KR estimates</div>
         </div>
 
         <div class="arrow">→</div>
@@ -430,15 +473,73 @@
           <div class="node-title">SETUP COMPLETE</div>
         </div>
       </div>
+
+      <!-- Miro Import Detail -->
+      <div style="margin-top: 30px;">
+        <p style="text-align: center; color: #4BD5EE; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; margin-bottom: 15px;">MIRO IMPORT FLOW</p>
+        <div class="flow">
+          <div class="node node-action">
+            <div class="node-title">UPLOAD IMAGE/CSV</div>
+            <div class="node-desc">From Miro board</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">OCR / PARSE</div>
+            <div class="node-desc">Extract tasks</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-new" style="min-width: 200px;">
+            <span class="updated-badge">UPD</span>
+            <div class="node-title">TABLE EDITOR</div>
+            <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+              Edit name, status, priority<br>
+              Assign team members<br>
+              Associate to Goal or BAU<br>
+              BAU categories (Marketing, etc.)<br>
+              Duplicate detection
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-decision">
+            <div class="node-title">GOAL?</div>
+            <div class="node-desc">Assign or skip</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="flow-vertical">
+            <div class="node node-action" style="min-width: 160px;">
+              <div class="node-title">GOAL's KR</div>
+              <div class="node-desc">Links to first KR</div>
+            </div>
+            <div style="color: #888; font-size: 0.8rem;">OR</div>
+            <div class="node node-action" style="min-width: 160px;">
+              <div class="node-title">BAU KR</div>
+              <div class="node-desc">With category tag</div>
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-end">
+            <div class="node-title">INITIATIVES CREATED</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- OKR TRACKING WORKFLOW (NEW) -->
+    <!-- OKR TRACKING WORKFLOW -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">2</div>
         OKR TRACKING WORKFLOW
         <span class="freq-badge">Weekly / As Needed</span>
-        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
       </div>
 
       <!-- Hierarchy Display -->
@@ -457,7 +558,7 @@
           <div class="hierarchy-level">
             <span class="hierarchy-icon">🚀</span>
             <span class="hierarchy-text" style="color: #9B59B6; font-weight: bold;">INITIATIVE</span>
-            <span class="hierarchy-text" style="color: #888;">- Work item (e.g., "Implement Python SDK")</span>
+            <span class="hierarchy-text" style="color: #888;">- Work item with tracker URL, assignees, hours (e.g., "Implement Python SDK")</span>
           </div>
         </div>
       </div>
@@ -471,7 +572,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-page">
-          <span class="new-badge">NEW</span>
           <span class="time-badge">2m</span>
           <div class="node-title">GOALS PAGE</div>
           <div class="node-desc">View all goals</div>
@@ -480,23 +580,27 @@
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <span class="new-badge">NEW</span>
           <div class="node-title">CLICK GOAL</div>
           <div class="node-desc">Opens detail page</div>
         </div>
 
         <div class="arrow">→</div>
 
-        <div class="node node-page">
-          <span class="new-badge">NEW</span>
+        <div class="node node-page" style="min-width: 200px;">
+          <span class="updated-badge">UPD</span>
           <div class="node-title">GOAL DETAIL</div>
-          <div class="node-desc">Key Results & Initiatives</div>
+          <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+            Key Results & Initiatives<br>
+            Add new initiatives<br>
+            Link existing from BAU<br>
+            Move between KRs<br>
+            Tracker URLs & hours
+          </div>
         </div>
 
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <span class="new-badge">NEW</span>
           <div class="node-title">CLICK STATUS</div>
           <div class="node-desc">Opens update modal</div>
         </div>
@@ -510,18 +614,52 @@
         </div>
       </div>
 
-      <!-- Update Modal Details -->
+      <!-- Goal Detail Actions -->
+      <div style="margin-top: 30px;">
+        <p style="text-align: center; color: #9B59B6; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; margin-bottom: 15px;">GOAL DETAIL PAGE ACTIONS</p>
+        <div class="feature-list">
+          <div class="feature-card">
+            <div class="feature-card-title" style="color: #FFE81F;">ADD NEW INITIATIVE</div>
+            <div class="feature-card-desc">
+              Create initiative from scratch<br>
+              Set name, assign members (Lead + Contributors)<br>
+              Add tracker URL (Jira, GitHub, etc.)<br>
+              Set category for BAU goals<br>
+              Hours & progress tracking
+            </div>
+          </div>
+          <div class="feature-card" style="border-color: rgba(155, 89, 182, 0.3);">
+            <div class="feature-card-title" style="color: #9B59B6;">LINK EXISTING INITIATIVE</div>
+            <div class="feature-card-desc">
+              Pull in unassigned initiatives from BAU<br>
+              Search & filter available initiatives<br>
+              One-click link to current Key Result<br>
+              Useful after Miro import with "skip"
+            </div>
+          </div>
+          <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+            <div class="feature-card-title" style="color: #E91E63;">MOVE INITIATIVE</div>
+            <div class="feature-card-desc">
+              Move between goals & key results<br>
+              Browse all goals with their KRs<br>
+              Reorganize work as priorities shift
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Update Flows -->
       <div style="margin-top: 30px;">
         <div class="flow">
           <div class="node node-new" style="min-width: 200px;">
             <div class="node-title">KEY RESULT UPDATE</div>
             <div class="node-desc" style="text-align: left; margin-top: 10px;">
-              • Select status<br>
-              • Update progress (0→5/12)<br>
-              • Quick buttons: +1, +2, +5<br>
-              • Add comment/note<br>
-              • Add related link<br>
-              • View update history
+              * Select status<br>
+              * Update progress (0 -> 5/12)<br>
+              * Quick buttons: +1, +2, +5<br>
+              * Add comment/note<br>
+              * Add related link<br>
+              * View update history
             </div>
           </div>
 
@@ -543,41 +681,6 @@
 
           <div class="node node-end">
             <div class="node-title">PROGRESS SAVED</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Initiative Update Flow -->
-      <div style="margin-top: 30px;">
-        <div class="flow">
-          <div class="node node-page">
-            <div class="node-title">EXPAND KEY RESULT</div>
-            <div class="node-desc">Click to show initiatives</div>
-          </div>
-
-          <div class="arrow">→</div>
-
-          <div class="node node-new" style="min-width: 200px;">
-            <div class="node-title">INITIATIVE UPDATE</div>
-            <div class="node-desc" style="text-align: left; margin-top: 10px;">
-              • Select status<br>
-              • Add comment/note<br>
-              • Add PR/Jira link<br>
-              • View update history
-            </div>
-          </div>
-
-          <div class="arrow">→</div>
-
-          <div class="node node-action">
-            <div class="node-title">SAVE UPDATE</div>
-            <div class="node-desc">Linked to initiative</div>
-          </div>
-
-          <div class="arrow">→</div>
-
-          <div class="node node-end">
-            <div class="node-title">INITIATIVE UPDATED</div>
           </div>
         </div>
       </div>
@@ -645,7 +748,6 @@
           </div>
 
           <div class="node node-action">
-            <span class="new-badge">NEW</span>
             <div class="node-title">UPDATE KR/INIT</div>
             <div class="node-desc">Log progress + comment</div>
           </div>
@@ -664,27 +766,202 @@
           </div>
 
           <div class="node node-action">
-            <div class="node-title">CREATE TASK</div>
-            <div class="node-desc">Or re-import</div>
-          </div>
-
-          <div class="arrow">→</div>
-
-          <div class="node node-action">
-            <div class="node-title">LINK TO GOAL</div>
+            <span class="updated-badge">UPD</span>
+            <div class="node-title">ADD INITIATIVE</div>
+            <div class="node-desc">On any goal page</div>
           </div>
 
           <div class="arrow">→</div>
 
           <div class="node node-action">
             <div class="node-title">ASSIGN TEAM</div>
+            <div class="node-desc">Lead + Contributors</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">ADD TRACKER</div>
+            <div class="node-desc">Jira/GitHub URL</div>
           </div>
 
           <div class="arrow">→</div>
 
           <div class="node node-action">
             <div class="node-title">SET PRIORITY</div>
+            <div class="node-desc">P1 / P2 / P3 / P4</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY CHECK-IN WORKFLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">4</div>
+        WEEKLY CHECK-IN WORKFLOW
+        <span class="freq-badge">Weekly</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">WEEKLY CHECK-IN</div>
+          <div class="node-desc">Log work done</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="time-badge">5m</span>
+          <div class="node-title">CHECK-IN PAGE</div>
+          <div class="node-desc">My Check-in tab</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SELECT WEEK</div>
+          <div class="node-desc">Navigate weeks</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-new" style="min-width: 200px;">
+          <span class="updated-badge">UPD</span>
+          <div class="node-title">LOG WORK</div>
+          <div class="node-desc" style="text-align: left; margin-top: 10px;">
+            * Select initiative/KR<br>
+            * Set time allocation %<br>
+            * Up to 120% (overtime)<br>
+            * Add progress %<br>
+            * Events auto-injected<br>
+            * Add notes
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action" style="min-width: 160px;">
+          <span class="updated-badge">UPD</span>
+          <div class="node-title">SET MOOD</div>
+          <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+            On Fire (4)<br>
+            Good (3)<br>
+            Neutral (2)<br>
+            Blocked (1)
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">SUBMIT</div>
+          <div class="node-desc">Save check-in</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">CHECK-IN COMPLETE</div>
+        </div>
+      </div>
+
+      <!-- Check-in Tabs -->
+      <div style="margin-top: 30px;">
+        <p style="text-align: center; color: #4BD5EE; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; margin-bottom: 15px;">CHECK-IN PAGE TABS</p>
+        <div class="flow">
+          <div class="node node-page" style="min-width: 180px;">
+            <div class="node-title">MY CHECK-IN</div>
+            <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+              Personal weekly log<br>
+              Time allocation per initiative<br>
+              Progress & notes<br>
+              Mood selection
+            </div>
+          </div>
+
+          <div class="node node-page" style="min-width: 180px;">
+            <div class="node-title">TEAM OVERVIEW</div>
+            <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+              All team check-ins<br>
+              Allocation summary<br>
+              Week navigation
+            </div>
+          </div>
+
+          <div class="node node-new" style="min-width: 180px;">
+            <span class="new-badge">NEW</span>
+            <div class="node-title">ANALYTICS</div>
+            <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
+              Goal progress bar chart<br>
+              Team satisfaction trends<br>
+              Mood score over time<br>
+              Quarter selector
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTIMATION WORKFLOW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">5</div>
+        ESTIMATION WORKFLOW
+        <span class="freq-badge">Quarterly</span>
+        <span style="background: #FF9800; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">UPDATED</span>
+      </div>
+
+      <div class="flow">
+        <div class="node node-start">
+          <div class="node-title">PLAN QUARTER</div>
+          <div class="node-desc">Resource estimation</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-page">
+          <span class="updated-badge">UPD</span>
+          <span class="time-badge">15m</span>
+          <div class="node-title">ESTIMATION PAGE</div>
+          <div class="node-desc">FTE planning</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="flow-vertical">
+          <div class="node node-action" style="min-width: 200px;">
+            <div class="node-title">GOAL INITIATIVES</div>
+            <div class="node-desc">Estimate hours per initiative</div>
+          </div>
+          <div class="node node-action" style="min-width: 200px; border-color: #4BD5EE;">
+            <span class="new-badge">NEW</span>
+            <div class="node-title" style="color: #4BD5EE;">KEY RESULT ESTIMATES</div>
+            <div class="node-desc">FTE per KR (blue cards)</div>
+          </div>
+          <div class="node node-action" style="min-width: 200px; border-color: #FFE81F;">
+            <span class="new-badge">NEW</span>
+            <div class="node-title" style="color: #FFE81F;">GENERIC BAU</div>
+            <div class="node-desc">Local-only FTE estimate</div>
+          </div>
+          <div class="node node-action" style="min-width: 200px; border-color: #FFE81F;">
+            <span class="new-badge">NEW</span>
+            <div class="node-title" style="color: #FFE81F;">GENERIC EVENTS</div>
+            <div class="node-desc">Local-only FTE estimate</div>
+          </div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action">
+          <div class="node-title">TOTAL FTE</div>
+          <div class="node-desc">Summed automatically</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-end">
+          <div class="node-title">QUARTER PLANNED</div>
         </div>
       </div>
     </div>
@@ -692,7 +969,7 @@
     <!-- WEEKLY BRIEFING -->
     <div class="section">
       <div class="section-header">
-        <div class="section-icon">4</div>
+        <div class="section-icon">6</div>
         WEEKLY BRIEFING
         <span class="freq-badge">Friday / Monday</span>
       </div>
@@ -735,7 +1012,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <span class="new-badge">NEW</span>
           <div class="node-title">LOG PROGRESS</div>
           <div class="node-desc">Update KRs with comments</div>
         </div>
@@ -755,75 +1031,10 @@
       </div>
     </div>
 
-    <!-- WEEKLY CHECK-IN WORKFLOW -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-icon">5</div>
-        WEEKLY CHECK-IN WORKFLOW
-        <span class="freq-badge">Weekly</span>
-        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
-      </div>
-
-      <div class="flow">
-        <div class="node node-start">
-          <div class="node-title">WEEKLY CHECK-IN</div>
-          <div class="node-desc">Log work done</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-page">
-          <span class="new-badge">NEW</span>
-          <span class="time-badge">5m</span>
-          <div class="node-title">CHECK-IN PAGE</div>
-          <div class="node-desc">Select team member</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-action">
-          <div class="node-title">SELECT WEEK</div>
-          <div class="node-desc">Navigate weeks</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-new" style="min-width: 180px;">
-          <div class="node-title">LOG WORK</div>
-          <div class="node-desc" style="text-align: left; margin-top: 10px;">
-            • Select initiative/KR<br>
-            • Set time allocation %<br>
-            • Add progress %<br>
-            • Add notes
-          </div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-action">
-          <div class="node-title">SUBMIT</div>
-          <div class="node-desc">Save check-in</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-action">
-          <div class="node-title">PROGRESS UPDATED</div>
-          <div class="node-desc">KR/Initiative auto-updates</div>
-        </div>
-
-        <div class="arrow">→</div>
-
-        <div class="node node-end">
-          <div class="node-title">CHECK-IN COMPLETE</div>
-        </div>
-      </div>
-    </div>
-
     <!-- EXPORT WORKFLOW -->
     <div class="section">
       <div class="section-header">
-        <div class="section-icon">6</div>
+        <div class="section-icon">7</div>
         EXPORT WORKFLOW
         <span class="freq-badge">Monthly / Quarterly</span>
       </div>
@@ -845,7 +1056,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-decision">
-          <span class="new-badge">NEW</span>
           <div class="node-title">DATA SOURCE?</div>
           <div class="node-desc">Choose type</div>
         </div>
@@ -910,9 +1120,8 @@
     <!-- STATUS FLOW -->
     <div class="section">
       <div class="section-header">
-        <div class="section-icon">7</div>
+        <div class="section-icon">8</div>
         OKR STATUS LIFECYCLE
-        <span style="background: #E91E63; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">NEW</span>
       </div>
 
       <div class="flow">
@@ -943,8 +1152,71 @@
         </div>
       </div>
 
+      <div style="margin-top: 15px;">
+        <div class="flow">
+          <div class="node node-action" style="border-color: #FF9800; min-width: 120px;">
+            <div class="node-title" style="color: #FF9800;">ON-HOLD</div>
+            <div class="node-desc">Paused</div>
+          </div>
+
+          <div style="color: #888; font-size: 0.8rem; display: flex; align-items: center; padding: 0 10px;">or</div>
+
+          <div class="node node-action" style="border-color: #FF2D2D; min-width: 120px;">
+            <div class="node-title" style="color: #FF2D2D;">CANCELLED</div>
+            <div class="node-desc">Dropped</div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top: 20px; text-align: center; color: #888; font-size: 0.8rem;">
         Each status change is tracked with: timestamp, comment, and optional link (PR, Jira, docs)
+      </div>
+    </div>
+
+    <!-- APP PAGES OVERVIEW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">9</div>
+        APP PAGES OVERVIEW
+      </div>
+
+      <div class="feature-list">
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">DASHBOARD</div>
+          <div class="feature-card-desc">Team utilization overview, capacity alerts, member workload summary</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">GOALS</div>
+          <div class="feature-card-desc">OKR hierarchy: Goals > Key Results > Initiatives. Add/link/move initiatives, update progress, tracker URLs</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">TEAM OVERVIEW</div>
+          <div class="feature-card-desc">Team members, roles, project assignments, workload per person</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">WEEKLY CHECK-IN</div>
+          <div class="feature-card-desc">My Check-in, Team Overview, Analytics. Time allocation (up to 120%), mood, events auto-injected</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">ESTIMATION</div>
+          <div class="feature-card-desc">Quarter FTE planning. Initiative hours, KR estimates, generic BAU/Events estimates</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">WEEKLY BRIEFING</div>
+          <div class="feature-card-desc">Kanban board view for weekly task review and status tracking</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">CAPACITY PLANNING</div>
+          <div class="feature-card-desc">Resource allocation across time periods, availability calculations</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-title" style="color: #FFE81F;">PMO EXPORT</div>
+          <div class="feature-card-desc">Export work done (from check-ins) or estimations as CSV/JSON with date range & filters</div>
+        </div>
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <div class="feature-card-title" style="color: #E91E63;">CONTROL PANEL (Admin)</div>
+          <div class="feature-card-desc">Multi-calendar sync, Leapsome import, Miro import (OCR + table editor + goal association), user management</div>
+        </div>
       </div>
     </div>
 
@@ -981,6 +1253,10 @@
       <div class="legend-item">
         <div style="background: #E91E63; color: #fff; font-size: 0.55rem; padding: 3px 6px; border-radius: 10px; font-weight: bold;">NEW</div>
         <span>New Feature</span>
+      </div>
+      <div class="legend-item">
+        <div style="background: #FF9800; color: #fff; font-size: 0.55rem; padding: 3px 6px; border-radius: 10px; font-weight: bold;">UPD</div>
+        <span>Updated Feature</span>
       </div>
     </div>
 

@@ -46,7 +46,7 @@ export default function GoalDetail() {
 
   // Add initiative state
   const [addInitiativeModal, setAddInitiativeModal] = useState(null) // { keyResultId }
-  const [newInitiative, setNewInitiative] = useState({ name: '', description: '', memberIds: [], startDate: '', endDate: '', category: '', hours: 0, progress: 0 })
+  const [newInitiative, setNewInitiative] = useState({ name: '', description: '', memberIds: [], startDate: '', endDate: '', category: '', hours: 0, progress: 0, trackerUrl: '' })
   const [addingInitiative, setAddingInitiative] = useState(false)
   const [deletingInitiative, setDeletingInitiative] = useState(null)
   const [editingProgress, setEditingProgress] = useState(null) // { id, progress }
@@ -57,6 +57,12 @@ export default function GoalDetail() {
   const [moveModal, setMoveModal] = useState(null) // { initiativeId, initiativeName, currentKrId }
   const [allGoals, setAllGoals] = useState([])
   const [movingInitiative, setMovingInitiative] = useState(false)
+
+  // Link existing initiative state
+  const [linkModal, setLinkModal] = useState(null) // { keyResultId }
+  const [unassignedInitiatives, setUnassignedInitiatives] = useState([])
+  const [loadingUnassigned, setLoadingUnassigned] = useState(false)
+  const [linkSearch, setLinkSearch] = useState('')
 
   // Events quarter filter
   const [eventsQuarterFilter, setEventsQuarterFilter] = useState('All')
@@ -168,6 +174,51 @@ export default function GoalDetail() {
       console.error('Failed to move initiative:', error)
     } finally {
       setMovingInitiative(false)
+    }
+  }
+
+  // Link existing initiative functions
+  const openLinkModal = async (keyResultId) => {
+    setLinkModal({ keyResultId })
+    setLinkSearch('')
+    setLoadingUnassigned(true)
+    try {
+      // Fetch BAU goal initiatives (unassigned/skipped during import)
+      const bauRes = await fetch('/api/key-results?bau=true', { headers: getAuthHeader() })
+      const bauKrs = await bauRes.json()
+      if (bauKrs.length > 0) {
+        const bauKrId = bauKrs[0].id
+        const krDetailRes = await fetch(`/api/key-results/${bauKrId}`, { headers: getAuthHeader() })
+        const krDetail = await krDetailRes.json()
+        setUnassignedInitiatives(krDetail.initiatives || [])
+      } else {
+        // Fallback: fetch all initiatives without a key result or from BAU
+        const allRes = await fetch('/api/initiatives?source=miro', { headers: getAuthHeader() })
+        const allInits = await allRes.json()
+        setUnassignedInitiatives(allInits.filter(i => !i.key_result_id))
+      }
+    } catch (error) {
+      console.error('Failed to fetch unassigned initiatives:', error)
+    } finally {
+      setLoadingUnassigned(false)
+    }
+  }
+
+  const linkInitiativeToKR = async (initiativeId) => {
+    if (!linkModal) return
+    try {
+      const res = await fetch(`/api/initiatives/${initiativeId}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key_result_id: linkModal.keyResultId })
+      })
+      if (res.ok) {
+        // Remove from unassigned list
+        setUnassignedInitiatives(prev => prev.filter(i => i.id !== initiativeId))
+        fetchKeyResults()
+      }
+    } catch (error) {
+      console.error('Failed to link initiative:', error)
     }
   }
 
@@ -322,8 +373,8 @@ export default function GoalDetail() {
     }
   }
 
-  // Check if this is a BAU or Events goal (allows adding initiatives)
-  const isManualAddAllowed = goal?.title?.includes('Business as Usual') || goal?.title === 'Events'
+  // All goals allow adding initiatives manually
+  const isManualAddAllowed = true
   const isBAUGoal = goal?.title?.includes('Business as Usual')
   const isEventsGoal = goal?.title === 'Events'
 
@@ -399,6 +450,7 @@ export default function GoalDetail() {
           category: newInitiative.category || null,
           actual_hours: newInitiative.hours || 0,
           progress: newInitiative.progress || 0,
+          tracker_url: newInitiative.trackerUrl.trim() || null,
           status: 'active',
           source: 'manual'
         })
@@ -629,27 +681,7 @@ export default function GoalDetail() {
       </div>
 
       {/* Goal Stats */}
-      <div className={`grid grid-cols-1 gap-4 ${isManualAddAllowed ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
-        {/* Quarter - show dropdown for Events, static text for others */}
-        {isEventsGoal ? (
-          <div className="hologram-card p-4">
-            <p className="text-sw-gray text-xs uppercase tracking-wider mb-2">Filter by Quarter</p>
-            <select
-              value={eventsQuarterFilter}
-              onChange={(e) => setEventsQuarterFilter(e.target.value)}
-              className="w-full px-2 py-1 bg-sw-darker border border-sw-gray/30 rounded text-sw-light text-sm focus:border-sw-gold focus:outline-none"
-            >
-              {availableQuarters.map(q => (
-                <option key={q} value={q}>{q}</option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div className="hologram-card p-4">
-            <p className="text-sw-gray text-xs uppercase tracking-wider">Quarter</p>
-            <p className="text-sw-light text-lg font-orbitron mt-1">{goal.quarter || '-'}</p>
-          </div>
-        )}
+      <div className={`grid grid-cols-1 gap-4 ${isManualAddAllowed ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <div className="hologram-card p-4">
           <p className="text-sw-gray text-xs uppercase tracking-wider">Lead</p>
           <p className="text-sw-light text-lg font-orbitron mt-1">{goal.owner_name || '-'}</p>
@@ -846,15 +878,26 @@ export default function GoalDetail() {
                           )}
                         </h4>
                         {isManualAddAllowed && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openAddInitiativeModal(kr.id) }}
-                            className="text-sw-gold hover:text-sw-light text-xs flex items-center gap-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            Add Initiative
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openLinkModal(kr.id) }}
+                              className="text-sw-purple hover:text-sw-light text-xs flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              </svg>
+                              Link Existing
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openAddInitiativeModal(kr.id) }}
+                              className="text-sw-gold hover:text-sw-light text-xs flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Add New
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -909,6 +952,20 @@ export default function GoalDetail() {
                                               >
                                                 {init.name}
                                               </button>
+                                            )}
+                                            {init.tracker_url && (
+                                              <a
+                                                href={init.tracker_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sw-blue hover:text-sw-gold transition-colors flex-shrink-0"
+                                                title={init.tracker_url}
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                              </a>
                                             )}
                                             <div className="flex items-center gap-2">
                                               {/* Hours badge */}
@@ -1057,6 +1114,20 @@ export default function GoalDetail() {
                                         {init.name}
                                       </button>
                                     )}
+                                    {init.tracker_url && (
+                                      <a
+                                        href={init.tracker_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sw-blue hover:text-sw-gold transition-colors flex-shrink-0"
+                                        title={init.tracker_url}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                      </a>
+                                    )}
                                     <div className="flex items-center gap-2">
                                       {init.target_value > 0 ? (
                                         <>
@@ -1167,7 +1238,16 @@ export default function GoalDetail() {
                         : 'No initiatives for this key result'}
                     </p>
                     {isManualAddAllowed && (
-                      <div className="text-center">
+                      <div className="text-center flex items-center justify-center gap-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openLinkModal(kr.id) }}
+                          className="btn-secondary text-sm"
+                        >
+                          <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          Link Existing
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); openAddInitiativeModal(kr.id) }}
                           className="btn-secondary text-sm"
@@ -1175,7 +1255,7 @@ export default function GoalDetail() {
                           <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                           </svg>
-                          Add Initiative
+                          Add New
                         </button>
                       </div>
                     )}
@@ -1565,31 +1645,47 @@ export default function GoalDetail() {
               )}
             </div>
 
-            {/* Date Range */}
-            <div className="mb-4 grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">
-                  Start Date {isEventsGoal && '*'}
-                </label>
-                <input
-                  type="date"
-                  value={newInitiative.startDate}
-                  onChange={(e) => setNewInitiative(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light focus:border-sw-gold focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={newInitiative.endDate}
-                  onChange={(e) => setNewInitiative(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light focus:border-sw-gold focus:outline-none"
-                />
-              </div>
+            {/* Tracker URL */}
+            <div className="mb-4">
+              <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">
+                Tracker URL (optional)
+              </label>
+              <input
+                type="url"
+                value={newInitiative.trackerUrl}
+                onChange={(e) => setNewInitiative(prev => ({ ...prev, trackerUrl: e.target.value }))}
+                placeholder="https://jira.example.com/browse/PROJ-123"
+                className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light placeholder-sw-gray/50 focus:border-sw-gold focus:outline-none"
+              />
             </div>
+
+            {/* Date Range - only for Events */}
+            {isEventsGoal && (
+              <div className="mb-4 grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">
+                    Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={newInitiative.startDate}
+                    onChange={(e) => setNewInitiative(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light focus:border-sw-gold focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sw-gray text-xs uppercase tracking-wider mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newInitiative.endDate}
+                    onChange={(e) => setNewInitiative(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light focus:border-sw-gold focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Hours and Progress - for Events */}
             {isEventsGoal && (
@@ -1899,6 +1995,86 @@ export default function GoalDetail() {
             <div className="mt-6 flex justify-end">
               <button onClick={() => setMoveModal(null)} className="btn-secondary">
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Link Existing Initiative Modal */}
+      {linkModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="hologram-card p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-orbitron text-sw-gold text-lg">Link Existing Initiative</h3>
+                <p className="text-sw-gray text-sm mt-1">
+                  Associate an unassigned initiative from BAU to this key result
+                </p>
+              </div>
+              <button onClick={() => setLinkModal(null)} className="text-sw-gray hover:text-sw-light">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="mb-4">
+              <input
+                type="text"
+                value={linkSearch}
+                onChange={(e) => setLinkSearch(e.target.value)}
+                placeholder="Search initiatives..."
+                className="w-full px-3 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light placeholder-sw-gray/50 focus:border-sw-gold focus:outline-none"
+                autoFocus
+              />
+            </div>
+
+            {loadingUnassigned ? (
+              <p className="text-sw-gold text-center py-8 animate-pulse">Loading initiatives...</p>
+            ) : unassignedInitiatives.length === 0 ? (
+              <p className="text-sw-gray text-center py-8">No unassigned initiatives found in BAU</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {unassignedInitiatives
+                  .filter(i => !linkSearch || i.name.toLowerCase().includes(linkSearch.toLowerCase()))
+                  .map(init => (
+                    <div
+                      key={init.id}
+                      className="flex items-center justify-between p-3 rounded border border-sw-gray/20 hover:border-sw-purple/50 transition-colors bg-sw-darker/30"
+                    >
+                      <div className="flex-1 min-w-0 mr-3">
+                        <p className="text-sw-light text-sm truncate">{init.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {init.owner_name && (
+                            <span className="text-sw-gray text-xs">{init.owner_name}</span>
+                          )}
+                          {init.category && (
+                            <span className="text-sw-gold text-xs px-1.5 py-0.5 rounded bg-sw-gold/10">{init.category}</span>
+                          )}
+                          {init.status && (
+                            <span className="text-sw-blue text-xs">{init.status}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => linkInitiativeToKR(init.id)}
+                        className="btn-primary text-xs px-3 py-1 flex-shrink-0"
+                      >
+                        Link
+                      </button>
+                    </div>
+                  ))}
+                {unassignedInitiatives.filter(i => !linkSearch || i.name.toLowerCase().includes(linkSearch.toLowerCase())).length === 0 && (
+                  <p className="text-sw-gray text-center py-4">No matching initiatives</p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button onClick={() => setLinkModal(null)} className="btn-secondary">
+                Done
               </button>
             </div>
           </div>

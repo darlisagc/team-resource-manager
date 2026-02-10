@@ -3,6 +3,23 @@ import { getAll, getOne, insert, update, deleteRow, run } from '../db/database.j
 
 const router = Router()
 
+// Helper: Ensure owner is in initiative_assignments as Lead
+function ensureOwnerAssignment(initiativeId, ownerId) {
+  if (!ownerId) return
+  const existing = getOne(
+    'SELECT id FROM initiative_assignments WHERE initiative_id = ? AND team_member_id = ?',
+    [initiativeId, ownerId]
+  )
+  if (!existing) {
+    insert('initiative_assignments', {
+      initiative_id: initiativeId,
+      team_member_id: ownerId,
+      role: 'Lead',
+      source: 'manual'
+    })
+  }
+}
+
 // Helper: Recalculate Key Result progress from its initiatives
 function recalculateKeyResultProgress(keyResultId) {
   const initiatives = getAll(
@@ -255,7 +272,7 @@ router.get('/:id', (req, res) => {
 
 // Create initiative
 router.post('/', (req, res) => {
-  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, external_id, source, category, actual_hours, progress } = req.body
+  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, external_id, source, category, actual_hours, progress, tracker_url } = req.body
 
   if (!name) {
     return res.status(400).json({ message: 'Initiative name is required' })
@@ -275,8 +292,12 @@ router.post('/', (req, res) => {
     source: source || 'manual',
     category: category || null,
     actual_hours: actual_hours || 0,
-    progress: progress || 0
+    progress: progress || 0,
+    tracker_url: tracker_url || null
   })
+
+  // Auto-assign owner to initiative_assignments
+  ensureOwnerAssignment(result.lastInsertRowid, owner_id)
 
   const initiative = getOne('SELECT * FROM initiatives WHERE id = ?', [result.lastInsertRowid])
   res.status(201).json(initiative)
@@ -289,7 +310,7 @@ router.put('/:id', (req, res) => {
     return res.status(404).json({ message: 'Initiative not found' })
   }
 
-  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, current_value, comment, link, updated_by } = req.body
+  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, current_value, comment, link, updated_by, tracker_url } = req.body
 
   // If status is changing and there's a comment/link, record the update
   if (status && status !== existing.status) {
@@ -321,8 +342,15 @@ router.put('/:id', (req, res) => {
     end_date: end_date !== undefined ? end_date : existing.end_date,
     estimated_hours: estimated_hours !== undefined ? estimated_hours : existing.estimated_hours,
     current_value: current_value !== undefined ? current_value : existing.current_value,
+    tracker_url: tracker_url !== undefined ? tracker_url : existing.tracker_url,
     progress: newProgress
   }, 'id = ?', [req.params.id])
+
+  // Auto-assign new owner if owner changed
+  const finalOwnerId = owner_id !== undefined ? owner_id : existing.owner_id
+  if (finalOwnerId) {
+    ensureOwnerAssignment(req.params.id, finalOwnerId)
+  }
 
   // Cascade progress to Key Result and Goal
   const finalKeyResultId = key_result_id !== undefined ? key_result_id : existing.key_result_id

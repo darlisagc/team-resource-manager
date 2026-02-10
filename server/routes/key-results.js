@@ -3,6 +3,22 @@ import { getAll, getOne, insert, update, deleteRow, run } from '../db/database.j
 
 const router = Router()
 
+// Helper: Ensure owner is in key_result_assignees
+function ensureOwnerAssignment(keyResultId, ownerId) {
+  if (!ownerId) return
+  const existing = getOne(
+    'SELECT id FROM key_result_assignees WHERE key_result_id = ? AND team_member_id = ?',
+    [keyResultId, ownerId]
+  )
+  if (!existing) {
+    insert('key_result_assignees', {
+      key_result_id: keyResultId,
+      team_member_id: ownerId,
+      source: 'manual'
+    })
+  }
+}
+
 // Helper: Recalculate Goal progress from its key results
 function recalculateGoalProgress(goalId) {
   const keyResults = getAll(
@@ -159,6 +175,9 @@ router.post('/', (req, res) => {
     source: source || 'manual'
   })
 
+  // Auto-assign owner to key_result_assignees
+  ensureOwnerAssignment(result.lastInsertRowid, owner_id)
+
   const keyResult = getOne(`
     SELECT kr.*, g.title as goal_title, g.quarter
     FROM key_results kr
@@ -237,6 +256,12 @@ router.put('/:id', (req, res) => {
     status: status !== undefined ? status : existing.status
   }, 'id = ?', [req.params.id])
 
+  // Auto-assign new owner if owner changed
+  const finalOwnerId = owner_id !== undefined ? owner_id : existing.owner_id
+  if (finalOwnerId) {
+    ensureOwnerAssignment(req.params.id, finalOwnerId)
+  }
+
   // Cascade: Recalculate Goal progress
   if (existing.goal_id) {
     recalculateGoalProgress(existing.goal_id)
@@ -261,6 +286,22 @@ router.delete('/:id', (req, res) => {
 
   deleteRow('key_results', 'id = ?', [req.params.id])
   res.json({ message: 'Key Result deleted' })
+})
+
+// Quick update for estimated hours (PATCH)
+router.patch('/:id/estimate', (req, res) => {
+  const existing = getOne('SELECT * FROM key_results WHERE id = ?', [req.params.id])
+  if (!existing) {
+    return res.status(404).json({ message: 'Key Result not found' })
+  }
+
+  const { estimated_hours } = req.body
+  update('key_results', {
+    estimated_hours: estimated_hours !== undefined ? estimated_hours : existing.estimated_hours,
+    updated_at: new Date().toISOString()
+  }, 'id = ?', [req.params.id])
+
+  res.json({ ...existing, estimated_hours: estimated_hours || 0 })
 })
 
 // =============== Assignee Management ===============

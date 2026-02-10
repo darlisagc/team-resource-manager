@@ -15,7 +15,7 @@ const IMPORT_TYPES = [
     label: 'Tasks (Miro)',
     endpoint: '/api/imports/miro/tasks',
     description: 'Upload Miro CSV export - edit in table before import',
-    expectedColumns: 'title, status, priority, assignees, effort',
+    expectedColumns: 'title, status, priority, assignees',
     accept: '.csv,.pdf,.jpg,.jpeg,.png',
     isImageImport: true
   },
@@ -30,6 +30,11 @@ const IMPORT_TYPES = [
 ]
 
 const DEFAULT_ICAL_URL = 'https://cardano-foundation.app.personio.com/calendar/ical-links/9255751/MrMrtNU1eJd4W1A30DAemvN4IrLdLYtldsqcZfHrlNsA26c2Zr3WFhswBz1WK7c8g8iHJc4aIsdTbZ5JXp27LEhaX4EWllx1fz0z8WrboBZuY8f8uBItsUFMEmfTv7Ht/60ba9896-1a27-431f-9b99-481ebbdbf3ad.ics'
+
+const BAU_CATEGORIES = [
+  'Marketing', 'Business operation', 'BD - Enterprise Adoption', 'BD - Web3 Adoption',
+  'BD - Account management', 'Legal', 'Venture Hub', 'Academy', 'Ecosystem Support', 'Finances'
+]
 
 export default function Settings() {
   const { getAuthHeader, user } = useAuth()
@@ -49,8 +54,9 @@ export default function Settings() {
   const [duplicateCheck, setDuplicateCheck] = useState(null)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [duplicateTitles, setDuplicateTitles] = useState(new Set()) // Track duplicates during editing
+  const [importGoals, setImportGoals] = useState([]) // Goals for associating imported tasks
 
-  // Fetch team members for assignee autocomplete
+  // Fetch team members and goals
   useEffect(() => {
     const fetchMembers = async () => {
       try {
@@ -63,7 +69,22 @@ export default function Settings() {
         console.error('Failed to fetch team members:', e)
       }
     }
+    const fetchGoals = async () => {
+      try {
+        const res = await fetch('/api/goals', { headers: getAuthHeader() })
+        if (res.ok) {
+          const data = await res.json()
+          // Exclude BAU and Events goals, group by quarter
+          setImportGoals(data.filter(g =>
+            !g.title.includes('Business as Usual') && g.title !== 'Events'
+          ))
+        }
+      } catch (e) {
+        console.error('Failed to fetch goals:', e)
+      }
+    }
     fetchMembers()
+    fetchGoals()
   }, [])
 
   // User management state
@@ -119,8 +140,10 @@ export default function Settings() {
     }
   }
 
-  // Calendar sync state
-  const [calendarUrl, setCalendarUrl] = useState(DEFAULT_ICAL_URL)
+  // Calendar sync state - supports multiple feeds
+  const [calendarFeeds, setCalendarFeeds] = useState([
+    { id: 1, name: 'Personio Time Off', url: DEFAULT_ICAL_URL }
+  ])
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
   const [previewData, setPreviewData] = useState(null)
@@ -205,9 +228,9 @@ export default function Settings() {
 
   // Convert table data back to CSV
   const tableToCSv = (data) => {
-    const header = 'title,status,priority,assignees,effort'
+    const header = 'title,status,priority,assignees,effort,goal_id,bau_category'
     const rows = data.map(row =>
-      [row.title, row.status, row.priority, row.assignees, row.effort]
+      [row.title, row.status, row.priority, row.assignees, row.effort || '', row.goal_id || '', row.bau_category || '']
         .map(escapeCSVField)
         .join(',')
     )
@@ -301,7 +324,7 @@ export default function Settings() {
   }
 
   const addTableRow = () => {
-    setTableData([...tableData, { title: '', status: 'todo', priority: 'medium', assignees: '', effort: '' }])
+    setTableData([...tableData, { title: '', status: 'active', priority: '', assignees: '', effort: '', goal_id: '', bau_category: '' }])
   }
 
   const removeTableRow = (index) => {
@@ -510,21 +533,38 @@ export default function Settings() {
   }
 
   const handlePreviewCalendar = async () => {
-    if (!calendarUrl) return
+    const activeFeeds = calendarFeeds.filter(f => f.url.trim())
+    if (activeFeeds.length === 0) return
 
     setPreviewing(true)
     setPreviewData(null)
 
     try {
-      const res = await fetch('/api/calendar/preview', {
-        method: 'POST',
-        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: calendarUrl })
-      })
+      // Preview all feeds and merge results
+      const allEvents = []
+      const personSet = new Set()
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message)
-      setPreviewData(data)
+      for (const feed of activeFeeds) {
+        const res = await fetch('/api/calendar/preview', {
+          method: 'POST',
+          headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: feed.url })
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message)
+        if (data.events) {
+          data.events.forEach(e => {
+            allEvents.push({ ...e, feedName: feed.name })
+            if (e.person) personSet.add(e.person)
+          })
+        }
+      }
+
+      setPreviewData({
+        totalEvents: allEvents.length,
+        uniquePersons: personSet.size,
+        events: allEvents
+      })
     } catch (error) {
       setSyncResult({ success: false, message: error.message })
     } finally {
@@ -537,11 +577,12 @@ export default function Settings() {
     setSyncResult(null)
 
     try {
+      const activeUrls = calendarFeeds.filter(f => f.url.trim()).map(f => f.url)
       const res = await fetch('/api/calendar/sync', {
         method: 'POST',
         headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          feedUrls: [calendarUrl],
+          feedUrls: activeUrls,
           nameMappings: providedMappings || nameMappings
         })
       })
@@ -625,28 +666,61 @@ export default function Settings() {
             </p>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sw-gray text-xs uppercase mb-2">iCal Feed URL</label>
-                <input
-                  type="text"
-                  value={calendarUrl}
-                  onChange={(e) => setCalendarUrl(e.target.value)}
-                  className="input-field text-sm"
-                  placeholder="https://...personio.de/calendar/ical-links/..."
-                />
+              {/* Calendar Feeds List */}
+              <div className="space-y-3">
+                <label className="block text-sw-gray text-xs uppercase">iCal Feed URLs</label>
+                {calendarFeeds.map((feed, index) => (
+                  <div key={feed.id} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={feed.name}
+                      onChange={(e) => setCalendarFeeds(prev => prev.map(f =>
+                        f.id === feed.id ? { ...f, name: e.target.value } : f
+                      ))}
+                      className="w-40 px-2 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light text-sm focus:border-sw-gold focus:outline-none"
+                      placeholder="Feed name"
+                    />
+                    <input
+                      type="text"
+                      value={feed.url}
+                      onChange={(e) => setCalendarFeeds(prev => prev.map(f =>
+                        f.id === feed.id ? { ...f, url: e.target.value } : f
+                      ))}
+                      className="flex-1 input-field text-sm"
+                      placeholder="https://...personio.de/calendar/ical-links/..."
+                    />
+                    {calendarFeeds.length > 1 && (
+                      <button
+                        onClick={() => setCalendarFeeds(prev => prev.filter(f => f.id !== feed.id))}
+                        className="text-sw-gray hover:text-red-400 transition-colors px-2"
+                        title="Remove feed"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={() => setCalendarFeeds(prev => [...prev, { id: Date.now(), name: '', url: '' }])}
+                  className="text-sw-blue text-sm hover:text-sw-gold transition-colors flex items-center gap-1"
+                >
+                  <span>+</span> Add another calendar
+                </button>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={handlePreviewCalendar}
-                  disabled={!calendarUrl || previewing}
+                  disabled={!calendarFeeds.some(f => f.url.trim()) || previewing}
                   className="btn-secondary flex-1 disabled:opacity-50"
                 >
                   {previewing ? 'LOADING...' : 'PREVIEW'}
                 </button>
                 <button
                   onClick={() => handleSyncCalendar()}
-                  disabled={!calendarUrl || syncing}
+                  disabled={!calendarFeeds.some(f => f.url.trim()) || syncing}
                   className="btn-primary flex-1 disabled:opacity-50"
                 >
                   {syncing ? 'SYNCING...' : 'SYNC NOW'}
@@ -1154,10 +1228,10 @@ export default function Settings() {
                       <thead>
                         <tr className="border-b border-sw-gray/30">
                           <th className="text-left p-2 text-sw-gray font-orbitron text-xs">TITLE</th>
-                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-28">STATUS</th>
-                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-28">PRIORITY</th>
+                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-32">STATUS</th>
+                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-24">PRIORITY</th>
                           <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-32">ASSIGNEES</th>
-                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-20">EFFORT</th>
+                          <th className="text-left p-2 text-sw-gray font-orbitron text-xs w-44">GOAL</th>
                           <th className="w-10"></th>
                         </tr>
                       </thead>
@@ -1220,10 +1294,12 @@ export default function Settings() {
                                 onChange={(e) => updateTableRow(index, 'status', e.target.value)}
                                 className="w-full bg-sw-darker border border-sw-gray/30 rounded px-2 py-1 text-sw-light text-sm focus:border-sw-gold focus:outline-none"
                               >
-                                <option value="todo">Todo</option>
+                                <option value="draft">Draft</option>
+                                <option value="active">Active</option>
                                 <option value="in-progress">In Progress</option>
-                                <option value="done">Done</option>
-                                <option value="blocked">Blocked</option>
+                                <option value="completed">Completed</option>
+                                <option value="on-hold">On Hold</option>
+                                <option value="cancelled">Cancelled</option>
                               </select>
                             </td>
                             <td className="p-2">
@@ -1232,10 +1308,11 @@ export default function Settings() {
                                 onChange={(e) => updateTableRow(index, 'priority', e.target.value)}
                                 className="w-full bg-sw-darker border border-sw-gray/30 rounded px-2 py-1 text-sw-light text-sm focus:border-sw-gold focus:outline-none"
                               >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="critical">Critical</option>
+                                <option value="">None</option>
+                                <option value="P1">P1</option>
+                                <option value="P2">P2</option>
+                                <option value="P3">P3</option>
+                                <option value="P4">P4</option>
                               </select>
                             </td>
                             <td className="p-2">
@@ -1282,13 +1359,39 @@ export default function Settings() {
                               </div>
                             </td>
                             <td className="p-2">
-                              <input
-                                type="text"
-                                value={row.effort}
-                                onChange={(e) => updateTableRow(index, 'effort', e.target.value)}
-                                className="w-full bg-sw-darker border border-sw-gray/30 rounded px-2 py-1 text-sw-light text-sm focus:border-sw-gold focus:outline-none"
-                                placeholder="hrs"
-                              />
+                              <div className="space-y-1">
+                                <select
+                                  value={row.goal_id || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    if (val.startsWith('bau:')) {
+                                      updateTableRow(index, 'goal_id', 'bau')
+                                      updateTableRow(index, 'bau_category', val.replace('bau:', ''))
+                                    } else {
+                                      updateTableRow(index, 'goal_id', val)
+                                      updateTableRow(index, 'bau_category', '')
+                                    }
+                                  }}
+                                  className="w-full bg-sw-darker border border-sw-gray/30 rounded px-2 py-1 text-sw-light text-xs focus:border-sw-gold focus:outline-none"
+                                >
+                                  <option value="">-- Skip (BAU) --</option>
+                                  <optgroup label="Goals">
+                                    {importGoals.map(g => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.title.length > 45 ? g.title.substring(0, 42) + '...' : g.title}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                  <optgroup label="BAU Category">
+                                    {BAU_CATEGORIES.map(cat => (
+                                      <option key={cat} value={`bau:${cat}`}>{cat}</option>
+                                    ))}
+                                  </optgroup>
+                                </select>
+                                {row.goal_id === 'bau' && row.bau_category && (
+                                  <span className="text-sw-gold text-xs">BAU: {row.bau_category}</span>
+                                )}
+                              </div>
                             </td>
                             <td className="p-2">
                               <button

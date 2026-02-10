@@ -98,9 +98,9 @@ export default function TeamOverview() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
         {/* Member List */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           {teams.map(team => (
             <div key={team} className="hologram-card p-4">
               <h3 className="font-orbitron text-sw-blue text-sm mb-3">{team}</h3>
@@ -140,7 +140,7 @@ export default function TeamOverview() {
         </div>
 
         {/* Member Details Panel */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-3">
           {selectedMember ? (
             <div className="hologram-card p-6 sticky top-6">
               <div className="text-center mb-6">
