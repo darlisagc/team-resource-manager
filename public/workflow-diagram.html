@@ -416,10 +416,11 @@
           <div class="parallel-container">
             <span class="parallel-label">Run in Parallel</span>
             <div class="node node-action" style="min-width: 180px;">
-              <span class="updated-badge">UPD</span>
+              <span class="new-badge">NEW</span>
               <div class="node-title">SYNC CALENDARS</div>
               <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
                 Multiple iCal feeds<br>
+                Feeds saved to DB (CRUD)<br>
                 PTO, Vacation, Sick days<br>
                 Holidays, Birthdays<br>
                 Parental/Maternity leave<br>
@@ -431,7 +432,6 @@
               <div class="node-desc">Leapsome OKRs</div>
             </div>
             <div class="node node-action" style="min-width: 190px;">
-              <span class="updated-badge">UPD</span>
               <div class="node-title">IMPORT FROM MIRO</div>
               <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
                 Creates initiatives<br>
@@ -453,7 +453,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-action">
-          <span class="updated-badge">UPD</span>
           <div class="node-title">LINK INITIATIVES</div>
           <div class="node-desc">Link to Key Results</div>
         </div>
@@ -461,7 +460,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-page">
-          <span class="updated-badge">UPD</span>
           <span class="time-badge">15m</span>
           <div class="node-title">ESTIMATION</div>
           <div class="node-desc">Quarter planning + KR estimates</div>
@@ -492,8 +490,7 @@
 
           <div class="arrow">→</div>
 
-          <div class="node node-new" style="min-width: 200px;">
-            <span class="updated-badge">UPD</span>
+          <div class="node node-action" style="min-width: 200px;">
             <div class="node-title">TABLE EDITOR</div>
             <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
               Edit name, status, priority<br>
@@ -587,7 +584,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-page" style="min-width: 200px;">
-          <span class="updated-badge">UPD</span>
           <div class="node-title">GOAL DETAIL</div>
           <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
             Key Results & Initiatives<br>
@@ -607,7 +603,7 @@
 
         <div class="arrow">→</div>
 
-        <div class="node node-new">
+        <div class="node node-action">
           <span class="time-badge">1m</span>
           <div class="node-title">UPDATE MODAL</div>
           <div class="node-desc">Status + Progress + Comment</div>
@@ -651,7 +647,7 @@
       <!-- Update Flows -->
       <div style="margin-top: 30px;">
         <div class="flow">
-          <div class="node node-new" style="min-width: 200px;">
+          <div class="node node-action" style="min-width: 200px;">
             <div class="node-title">KEY RESULT UPDATE</div>
             <div class="node-desc" style="text-align: left; margin-top: 10px;">
               * Select status<br>
@@ -668,6 +664,14 @@
           <div class="node node-action">
             <div class="node-title">SAVE UPDATE</div>
             <div class="node-desc">Recorded with timestamp</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-new">
+            <span class="new-badge">NEW</span>
+            <div class="node-title">AUTO-COMPLETE</div>
+            <div class="node-desc">100% → status = completed</div>
           </div>
 
           <div class="arrow">→</div>
@@ -703,10 +707,15 @@
 
           <div class="arrow">→</div>
 
-          <div class="node node-page">
+          <div class="node node-page" style="min-width: 180px;">
+            <span class="new-badge">NEW</span>
             <span class="time-badge">2m</span>
             <div class="node-title">DASHBOARD</div>
-            <div class="node-desc">Check utilization</div>
+            <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+              Check utilization<br>
+              Effective FTE display<br>
+              Capacity adjustments
+            </div>
           </div>
 
           <div class="arrow">→</div>
@@ -766,7 +775,6 @@
           </div>
 
           <div class="node node-action">
-            <span class="updated-badge">UPD</span>
             <div class="node-title">ADD INITIATIVE</div>
             <div class="node-desc">On any goal page</div>
           </div>
@@ -826,14 +834,15 @@
 
         <div class="arrow">→</div>
 
-        <div class="node node-new" style="min-width: 200px;">
-          <span class="updated-badge">UPD</span>
+        <div class="node node-action" style="min-width: 220px;">
+          <span class="new-badge">NEW</span>
           <div class="node-title">LOG WORK</div>
           <div class="node-desc" style="text-align: left; margin-top: 10px;">
             * Select initiative/KR<br>
             * Set time allocation %<br>
             * Up to 120% (overtime)<br>
-            * Add progress %<br>
+            * Target-based: units/week<br>
+            * Percentage-based: progress %<br>
             * Events auto-injected<br>
             * Add notes
           </div>
@@ -842,7 +851,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-action" style="min-width: 160px;">
-          <span class="updated-badge">UPD</span>
           <div class="node-title">SET MOOD</div>
           <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
             On Fire (4)<br>
@@ -889,8 +897,7 @@
             </div>
           </div>
 
-          <div class="node node-new" style="min-width: 180px;">
-            <span class="new-badge">NEW</span>
+          <div class="node node-page" style="min-width: 180px;">
             <div class="node-title">ANALYTICS</div>
             <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
               Goal progress bar chart<br>
@@ -909,7 +916,6 @@
         <div class="section-icon">5</div>
         ESTIMATION WORKFLOW
         <span class="freq-badge">Quarterly</span>
-        <span style="background: #FF9800; color: #fff; font-size: 0.6rem; padding: 3px 8px; border-radius: 10px; margin-left: 10px;">UPDATED</span>
       </div>
 
       <div class="flow">
@@ -921,7 +927,6 @@
         <div class="arrow">→</div>
 
         <div class="node node-page">
-          <span class="updated-badge">UPD</span>
           <span class="time-badge">15m</span>
           <div class="node-title">ESTIMATION PAGE</div>
           <div class="node-desc">FTE planning</div>
@@ -935,17 +940,14 @@
             <div class="node-desc">Estimate hours per initiative</div>
           </div>
           <div class="node node-action" style="min-width: 200px; border-color: #4BD5EE;">
-            <span class="new-badge">NEW</span>
             <div class="node-title" style="color: #4BD5EE;">KEY RESULT ESTIMATES</div>
             <div class="node-desc">FTE per KR (blue cards)</div>
           </div>
           <div class="node node-action" style="min-width: 200px; border-color: #FFE81F;">
-            <span class="new-badge">NEW</span>
             <div class="node-title" style="color: #FFE81F;">GENERIC BAU</div>
             <div class="node-desc">Local-only FTE estimate</div>
           </div>
           <div class="node node-action" style="min-width: 200px; border-color: #FFE81F;">
-            <span class="new-badge">NEW</span>
             <div class="node-title" style="color: #FFE81F;">GENERIC EVENTS</div>
             <div class="node-desc">Local-only FTE estimate</div>
           </div>
@@ -982,9 +984,23 @@
         <div class="arrow">→</div>
 
         <div class="node node-page">
+          <span class="new-badge">NEW</span>
           <span class="time-badge">15m</span>
           <div class="node-title">WEEKLY BRIEFING</div>
           <div class="node-desc">Kanban board view</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-action" style="min-width: 180px;">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">REVIEW PROGRESS</div>
+          <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+            KR progress bars<br>
+            Initiative progress bars<br>
+            Target-based (5/12)<br>
+            Percentage-based (75%)
+          </div>
         </div>
 
         <div class="arrow">→</div>
@@ -1063,7 +1079,7 @@
         <div class="arrow">→</div>
 
         <div class="flow-vertical">
-          <div class="node node-new" style="min-width: 160px;">
+          <div class="node node-action" style="min-width: 160px;">
             <div class="node-title">WORK DONE</div>
             <div class="node-desc">From check-ins</div>
           </div>
@@ -1168,8 +1184,11 @@
         </div>
       </div>
 
-      <div style="margin-top: 20px; text-align: center; color: #888; font-size: 0.8rem;">
-        Each status change is tracked with: timestamp, comment, and optional link (PR, Jira, docs)
+      <div style="margin-top: 20px; text-align: center; font-size: 0.8rem;">
+        <span style="color: #888;">Each status change is tracked with: timestamp, comment, and optional link (PR, Jira, docs)</span>
+        <br>
+        <span style="color: #E91E63; font-family: 'Orbitron', sans-serif; font-size: 0.7rem;">NEW: </span>
+        <span style="color: #4BD5EE;">Initiatives & KRs auto-complete when reaching 100% progress</span>
       </div>
     </div>
 
@@ -1181,41 +1200,47 @@
       </div>
 
       <div class="feature-list">
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">DASHBOARD</div>
-          <div class="feature-card-desc">Team utilization overview, capacity alerts, member workload summary</div>
+          <div class="feature-card-desc">Team utilization overview, capacity alerts, member workload summary. Effective FTE & capacity adjustments</div>
         </div>
         <div class="feature-card">
           <div class="feature-card-title" style="color: #FFE81F;">GOALS</div>
           <div class="feature-card-desc">OKR hierarchy: Goals > Key Results > Initiatives. Add/link/move initiatives, update progress, tracker URLs</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">TEAM OVERVIEW</div>
-          <div class="feature-card-desc">Team members, roles, project assignments, workload per person</div>
+          <div class="feature-card-desc">Team members, roles, project assignments, workload per person. Effective FTE & weekly hours</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">WEEKLY CHECK-IN</div>
-          <div class="feature-card-desc">My Check-in, Team Overview, Analytics. Time allocation (up to 120%), mood, events auto-injected</div>
+          <div class="feature-card-desc">My Check-in, Team Overview, Analytics. Time allocation (up to 120%), mood, events auto-injected. Target-based progress (units/week)</div>
         </div>
         <div class="feature-card">
           <div class="feature-card-title" style="color: #FFE81F;">ESTIMATION</div>
           <div class="feature-card-desc">Quarter FTE planning. Initiative hours, KR estimates, generic BAU/Events estimates</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">WEEKLY BRIEFING</div>
-          <div class="feature-card-desc">Kanban board view for weekly task review and status tracking</div>
+          <div class="feature-card-desc">Kanban board view for weekly task review and status tracking. Initiative & KR progress bars (target-based + percentage)</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">CAPACITY PLANNING</div>
-          <div class="feature-card-desc">Resource allocation across time periods, availability calculations</div>
+          <div class="feature-card-desc">Resource allocation across time periods, availability calculations. Effective FTE & capacity adjustments</div>
         </div>
         <div class="feature-card">
           <div class="feature-card-title" style="color: #FFE81F;">PMO EXPORT</div>
           <div class="feature-card-desc">Export work done (from check-ins) or estimations as CSV/JSON with date range & filters</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #E91E63;">CONTROL PANEL (Admin)</div>
-          <div class="feature-card-desc">Multi-calendar sync, Leapsome import, Miro import (OCR + table editor + goal association), user management</div>
+          <div class="feature-card-desc">Multi-calendar sync (feeds persisted to DB), Leapsome import, Miro import (OCR + table editor + goal association), user management</div>
         </div>
       </div>
     </div>
