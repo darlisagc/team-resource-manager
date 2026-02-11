@@ -70,6 +70,10 @@ router.get('/summary', (req, res) => {
       COALESCE((SELECT SUM(hours) FROM time_off
                 WHERE team_member_id = tm.id
                 AND start_date <= ? AND end_date >= ?), 0) as time_off_hours,
+      COALESCE((SELECT SUM(hours) FROM time_off
+                WHERE team_member_id = tm.id
+                AND type = 'other'
+                AND start_date <= ? AND end_date >= ?), 0) as capacity_adjustment_hours,
       COUNT(DISTINCT a.goal_id) as goal_count,
       COUNT(DISTINCT a.task_id) as task_count
     FROM team_members tm
@@ -77,7 +81,7 @@ router.get('/summary', (req, res) => {
       AND a.start_date <= ? AND a.end_date >= ?
     GROUP BY tm.id
     ORDER BY tm.name
-  `, [endDate, startDate, endDate, startDate])
+  `, [endDate, startDate, endDate, startDate, endDate, startDate])
 
   // Calculate utilization for each member (using centralized constant)
   const weeksInQuarter = WEEKS_PER_QUARTER
@@ -89,6 +93,13 @@ router.get('/summary', (req, res) => {
     const availableHours = totalCapacity - member.time_off_hours
     const utilization = totalCapacity > 0 ? (allocatedHours / totalCapacity) * 100 : 0
 
+    // Effective capacity: factor in type='other' capacity adjustments
+    const capacityAdjustmentHours = member.capacity_adjustment_hours || 0
+    const hasCapacityAdjustment = capacityAdjustmentHours > 0
+    const effectiveQuarterlyHours = (member.weekly_hours * weeksInQuarter) - capacityAdjustmentHours
+    const effectiveWeeklyHours = effectiveQuarterlyHours / weeksInQuarter
+    const effectiveFte = effectiveWeeklyHours / 40
+
     return {
       ...member,
       totalCapacity,
@@ -96,7 +107,10 @@ router.get('/summary', (req, res) => {
       allocatedHours,
       taskAllocatedHours,
       utilization: Math.round(utilization * 10) / 10,
-      fte: member.weekly_hours / 40
+      fte: member.weekly_hours / 40,
+      effective_weekly_hours: Math.round(effectiveWeeklyHours * 10) / 10,
+      effective_fte: Math.round(effectiveFte * 100) / 100,
+      has_capacity_adjustment: hasCapacityAdjustment
     }
   })
 

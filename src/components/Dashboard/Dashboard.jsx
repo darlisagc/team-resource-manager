@@ -179,7 +179,7 @@ export default function Dashboard() {
               title="Team Utilization"
               value={`${dashboardData.utilization.average.toFixed(1)}%`}
               subtitle={`${dashboardData.utilization.workPercent.toFixed(1)}% work + ${(dashboardData.utilization.eventPercent || 0).toFixed(1)}% events + ${dashboardData.utilization.timeOffPercent.toFixed(1)}% time off`}
-              secondarySubtitle={`${dashboardData.team.totalMembers} crew members • ${totalFTE.toFixed(1)} FTE`}
+              secondarySubtitle={`${dashboardData.team.totalMembers} crew members • ${dashboardData.team.effectiveTotalFTE !== dashboardData.team.totalFTE ? `${dashboardData.team.effectiveTotalFTE} eff. FTE (${totalFTE.toFixed(1)} base)` : `${totalFTE.toFixed(1)} FTE`}`}
               status={getUtilizationStatus(dashboardData.utilization.average)}
             />
             <MetricCard
@@ -416,8 +416,16 @@ export default function Dashboard() {
                           <td className="font-medium">{member.name}</td>
                           <td className="text-sw-gray">{member.role}</td>
                           <td>{member.team}</td>
-                          <td className="text-sw-gold font-orbitron">{member.fte}</td>
-                          <td>{member.weeklyHours}h</td>
+                          <td className="text-sw-gold font-orbitron">
+                            {member.hasCapacityAdjustment ? (
+                              <span>{member.effectiveFTE} <span className="text-sw-gray text-xs font-sans">(base: {member.fte})</span></span>
+                            ) : member.fte}
+                          </td>
+                          <td>
+                            {member.hasCapacityAdjustment ? (
+                              <span>{member.effectiveWeeklyHours}h <span className="text-sw-gray text-xs">(base: {member.weeklyHours}h)</span></span>
+                            ) : `${member.weeklyHours}h`}
+                          </td>
                           <td className="text-sw-blue">{member.totalCapacityHours}h</td>
                           <td className={member.timeOffHours > 0 ? 'text-sw-purple' : 'text-sw-gray'}>
                             {member.timeOffHours > 0 ? `${member.timeOffHours}h` : '-'}

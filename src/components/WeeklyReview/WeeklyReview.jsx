@@ -157,7 +157,14 @@ export default function WeeklyReview() {
 
   const totalInits = initiatives.length
   const completedInits = initiatives.filter(i => i.status === 'completed').length
-  const initProgress = totalInits > 0 ? Math.round((completedInits / totalInits) * 100) : 0
+  const initProgress = totalInits > 0
+    ? Math.round(initiatives.reduce((sum, i) => {
+        if (i.target_value > 0) {
+          return sum + Math.min(100, ((i.current_value || 0) / i.target_value) * 100)
+        }
+        return sum + (i.progress || 0)
+      }, 0) / totalInits)
+    : 0
 
   if (loading) {
     return (
@@ -345,21 +352,55 @@ export default function WeeklyReview() {
               <p className="text-sw-gray text-sm mb-4">{selectedItem.data.description}</p>
             )}
 
-            {/* Progress (for KRs) */}
-            {selectedItem.type === 'kr' && (
+            {/* Progress (for KRs with target) */}
+            {selectedItem.type === 'kr' && selectedItem.data.target_value > 0 && (
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-sw-gray">Progress</span>
                   <span className="text-sw-gold font-orbitron">
-                    {selectedItem.data.current_value || 0} / {selectedItem.data.target_value || 100}
+                    {selectedItem.data.current_value || 0} / {selectedItem.data.target_value}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-sw-darker rounded-full overflow-hidden">
                   <div
                     className="h-full bg-sw-gold transition-all"
-                    style={{ width: `${selectedItem.data.target_value > 0 ? (selectedItem.data.current_value / selectedItem.data.target_value) * 100 : 0}%` }}
+                    style={{ width: `${(selectedItem.data.current_value / selectedItem.data.target_value) * 100}%` }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Progress (for initiatives) */}
+            {selectedItem.type === 'initiative' && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-sw-gray">Progress</span>
+                  {selectedItem.data.target_value > 0 ? (
+                    <span className="text-sw-gold font-orbitron">
+                      {selectedItem.data.current_value || 0} / {selectedItem.data.target_value}
+                    </span>
+                  ) : (
+                    <span className="text-sw-gold font-orbitron">
+                      {selectedItem.data.progress || 0}%
+                    </span>
+                  )}
+                </div>
+                <div className="w-full h-2 bg-sw-darker rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-sw-gold transition-all"
+                    style={{ width: `${selectedItem.data.target_value > 0
+                      ? Math.min(100, ((selectedItem.data.current_value || 0) / selectedItem.data.target_value) * 100)
+                      : (selectedItem.data.progress || 0)}%` }}
+                  />
+                </div>
+                {selectedItem.data.actual_hours > 0 && (
+                  <div className="flex items-center gap-1 mt-2 text-xs text-sw-gold">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {selectedItem.data.actual_hours}h logged
+                  </div>
+                )}
               </div>
             )}
 
@@ -447,9 +488,15 @@ export default function WeeklyReview() {
 function ItemCard({ type, item, onDragStart, onClick }) {
   const isKR = type === 'kr'
   const title = item.title || item.name
-  const progress = isKR && item.target_value > 0
+
+  // Progress for KRs with target_value
+  const krProgress = isKR && item.target_value > 0
     ? Math.round((item.current_value / item.target_value) * 100)
     : null
+
+  // Progress for initiatives: target-based (current_value/target_value) or percentage-based
+  const initHasTarget = !isKR && item.target_value > 0
+  const initProgress = !isKR ? (item.progress || 0) : null
 
   return (
     <div
@@ -485,16 +532,37 @@ function ItemCard({ type, item, onDragStart, onClick }) {
         <p className="text-sw-gray text-xs mb-2 truncate">{item.goal_title}</p>
       )}
 
-      {progress !== null && (
+      {/* KR progress: current_value / target_value */}
+      {krProgress !== null && (
         <div className="mt-2">
           <div className="flex justify-between text-xs mb-1">
             <span className="text-sw-gray">{item.current_value}/{item.target_value}</span>
-            <span className="text-sw-gold">{progress}%</span>
+            <span className="text-sw-gold">{krProgress}%</span>
           </div>
           <div className="w-full h-1 bg-sw-darker rounded-full overflow-hidden">
             <div
-              className={`h-full ${progress >= 80 ? 'bg-green-500' : progress >= 50 ? 'bg-yellow-500' : 'bg-blue-500'}`}
-              style={{ width: `${progress}%` }}
+              className={`h-full ${krProgress >= 80 ? 'bg-green-500' : krProgress >= 50 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+              style={{ width: `${krProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Initiative progress: target-based or percentage-based */}
+      {!isKR && initProgress !== null && (
+        <div className="mt-2">
+          <div className="flex justify-between text-xs mb-1">
+            {initHasTarget ? (
+              <span className="text-sw-gray">{item.current_value || 0}/{item.target_value}</span>
+            ) : (
+              <span className="text-sw-gray">Progress</span>
+            )}
+            <span className="text-sw-gold">{initProgress}%</span>
+          </div>
+          <div className="w-full h-1 bg-sw-darker rounded-full overflow-hidden">
+            <div
+              className={`h-full ${initProgress >= 80 ? 'bg-green-500' : initProgress >= 50 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+              style={{ width: `${initProgress}%` }}
             />
           </div>
         </div>

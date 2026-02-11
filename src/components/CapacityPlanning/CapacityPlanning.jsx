@@ -65,6 +65,8 @@ export default function CapacityPlanning() {
 
   // Calculate totals
   const totalFTE = summary.reduce((sum, m) => sum + m.fte, 0)
+  const effectiveTotalFTE = summary.reduce((sum, m) => sum + (m.effective_fte || m.fte), 0)
+  const hasAnyCapacityAdjustment = summary.some(m => m.has_capacity_adjustment)
   const totalAvailableHours = summary.reduce((sum, m) => sum + m.availableHours, 0)
   const totalAllocatedHours = summary.reduce((sum, m) => sum + m.allocatedHours, 0)
   const overallUtilization = totalAvailableHours > 0 ? (totalAllocatedHours / totalAvailableHours) * 100 : 0
@@ -104,8 +106,12 @@ export default function CapacityPlanning() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="hologram-card p-4">
           <p className="text-sw-gray text-xs uppercase">Total FTE</p>
-          <p className="text-sw-gold font-orbitron text-2xl">{totalFTE.toFixed(2)}</p>
-          <p className="text-sw-gray text-xs">{summary.length} crew members</p>
+          <p className="text-sw-gold font-orbitron text-2xl">
+            {hasAnyCapacityAdjustment ? effectiveTotalFTE.toFixed(2) : totalFTE.toFixed(2)}
+          </p>
+          <p className="text-sw-gray text-xs">
+            {hasAnyCapacityAdjustment ? `${totalFTE.toFixed(2)} base • ` : ''}{summary.length} crew members
+          </p>
         </div>
         <div className="hologram-card p-4">
           <p className="text-sw-gray text-xs uppercase">Available Hours</p>
@@ -230,8 +236,16 @@ export default function CapacityPlanning() {
                   <td className="font-medium">{m.name}</td>
                   <td className="text-sw-gray">{m.role}</td>
                   <td>{m.team}</td>
-                  <td className="text-sw-gold font-orbitron">{m.fte}</td>
-                  <td>{m.weekly_hours}h</td>
+                  <td className="text-sw-gold font-orbitron">
+                    {m.has_capacity_adjustment ? (
+                      <span>{m.effective_fte} <span className="text-sw-gray text-xs font-sans">(base: {m.fte})</span></span>
+                    ) : m.fte}
+                  </td>
+                  <td>
+                    {m.has_capacity_adjustment ? (
+                      <span>{m.effective_weekly_hours}h <span className="text-sw-gray text-xs">(base: {m.weekly_hours}h)</span></span>
+                    ) : `${m.weekly_hours}h`}
+                  </td>
                   <td className="text-sw-blue">{Math.round(m.availableHours)}h</td>
                   <td className="text-sw-gold">{Math.round(m.allocatedHours)}h</td>
                   <td className="text-sw-purple">{m.time_off_hours}h</td>

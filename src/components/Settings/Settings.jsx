@@ -29,8 +29,6 @@ const IMPORT_TYPES = [
   }
 ]
 
-const DEFAULT_ICAL_URL = 'https://cardano-foundation.app.personio.com/calendar/ical-links/9255751/MrMrtNU1eJd4W1A30DAemvN4IrLdLYtldsqcZfHrlNsA26c2Zr3WFhswBz1WK7c8g8iHJc4aIsdTbZ5JXp27LEhaX4EWllx1fz0z8WrboBZuY8f8uBItsUFMEmfTv7Ht/60ba9896-1a27-431f-9b99-481ebbdbf3ad.ics'
-
 const BAU_CATEGORIES = [
   'Marketing', 'Business operation', 'BD - Enterprise Adoption', 'BD - Web3 Adoption',
   'BD - Account management', 'Legal', 'Venture Hub', 'Academy', 'Ecosystem Support', 'Finances'
@@ -140,10 +138,63 @@ export default function Settings() {
     }
   }
 
-  // Calendar sync state - supports multiple feeds
-  const [calendarFeeds, setCalendarFeeds] = useState([
-    { id: 1, name: 'Personio Time Off', url: DEFAULT_ICAL_URL }
-  ])
+  // Calendar sync state - supports multiple feeds (loaded from DB)
+  const [calendarFeeds, setCalendarFeeds] = useState([])
+  const [loadingFeeds, setLoadingFeeds] = useState(true)
+
+  // Load calendar feeds from DB on mount
+  useEffect(() => {
+    const fetchFeeds = async () => {
+      try {
+        const res = await fetch('/api/calendar/feeds', { headers: getAuthHeader() })
+        if (res.ok) {
+          const data = await res.json()
+          setCalendarFeeds(data)
+        }
+      } catch (e) {
+        console.error('Failed to fetch calendar feeds:', e)
+      } finally {
+        setLoadingFeeds(false)
+      }
+    }
+    fetchFeeds()
+  }, [])
+
+  const handleAddFeed = async () => {
+    try {
+      const res = await fetch('/api/calendar/feeds', {
+        method: 'POST',
+        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', url: '' })
+      })
+      if (res.ok) {
+        const newFeed = await res.json()
+        setCalendarFeeds(prev => [...prev, newFeed])
+      }
+    } catch (e) {
+      console.error('Failed to add feed:', e)
+    }
+  }
+
+  const handleSaveFeed = (feed) => {
+    fetch(`/api/calendar/feeds/${feed.id}`, {
+      method: 'PUT',
+      headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: feed.name, url: feed.url })
+    }).catch(e => console.error('Failed to save feed:', e))
+  }
+
+  const handleRemoveFeed = async (feedId) => {
+    try {
+      await fetch(`/api/calendar/feeds/${feedId}`, {
+        method: 'DELETE',
+        headers: getAuthHeader()
+      })
+      setCalendarFeeds(prev => prev.filter(f => f.id !== feedId))
+    } catch (e) {
+      console.error('Failed to delete feed:', e)
+    }
+  }
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
   const [previewData, setPreviewData] = useState(null)
@@ -669,7 +720,7 @@ export default function Settings() {
               {/* Calendar Feeds List */}
               <div className="space-y-3">
                 <label className="block text-sw-gray text-xs uppercase">iCal Feed URLs</label>
-                {calendarFeeds.map((feed, index) => (
+                {calendarFeeds.map((feed) => (
                   <div key={feed.id} className="flex items-center gap-2">
                     <input
                       type="text"
@@ -677,6 +728,7 @@ export default function Settings() {
                       onChange={(e) => setCalendarFeeds(prev => prev.map(f =>
                         f.id === feed.id ? { ...f, name: e.target.value } : f
                       ))}
+                      onBlur={() => handleSaveFeed(feed)}
                       className="w-40 px-2 py-2 bg-sw-darker border border-sw-gray/30 rounded text-sw-light text-sm focus:border-sw-gold focus:outline-none"
                       placeholder="Feed name"
                     />
@@ -686,12 +738,14 @@ export default function Settings() {
                       onChange={(e) => setCalendarFeeds(prev => prev.map(f =>
                         f.id === feed.id ? { ...f, url: e.target.value } : f
                       ))}
+                      onBlur={() => handleSaveFeed(feed)}
                       className="flex-1 input-field text-sm"
                       placeholder="https://...personio.de/calendar/ical-links/..."
                     />
                     {calendarFeeds.length > 1 && (
                       <button
-                        onClick={() => setCalendarFeeds(prev => prev.filter(f => f.id !== feed.id))}
+                        type="button"
+                        onClick={() => handleRemoveFeed(feed.id)}
                         className="text-sw-gray hover:text-red-400 transition-colors px-2"
                         title="Remove feed"
                       >
@@ -703,7 +757,8 @@ export default function Settings() {
                   </div>
                 ))}
                 <button
-                  onClick={() => setCalendarFeeds(prev => [...prev, { id: Date.now(), name: '', url: '' }])}
+                  type="button"
+                  onClick={handleAddFeed}
                   className="text-sw-blue text-sm hover:text-sw-gold transition-colors flex items-center gap-1"
                 >
                   <span>+</span> Add another calendar

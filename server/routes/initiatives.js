@@ -30,10 +30,15 @@ function recalculateKeyResultProgress(keyResultId) {
   if (initiatives.length === 0) return
 
   const avgProgress = initiatives.reduce((sum, i) => sum + (i.progress || 0), 0) / initiatives.length
-  update('key_results', {
-    progress: Math.round(avgProgress),
-    updated_at: new Date().toISOString()
-  }, 'id = ?', [keyResultId])
+  const rounded = Math.round(avgProgress)
+  const updateFields = { progress: rounded, updated_at: new Date().toISOString() }
+  if (rounded >= 100) {
+    const kr = getOne('SELECT status FROM key_results WHERE id = ?', [keyResultId])
+    if (kr && kr.status !== 'completed' && kr.status !== 'cancelled') {
+      updateFields.status = 'completed'
+    }
+  }
+  update('key_results', updateFields, 'id = ?', [keyResultId])
 }
 
 // Helper: Recalculate Goal progress from its key results
@@ -398,15 +403,20 @@ router.patch('/:id/progress', (req, res) => {
     return res.status(404).json({ message: 'Initiative not found' })
   }
 
-  const { progress } = req.body
+  const { progress, current_value } = req.body
   if (progress === undefined || progress < 0 || progress > 100) {
     return res.status(400).json({ message: 'Progress must be between 0 and 100' })
   }
 
-  update('initiatives', {
-    progress: Math.round(progress),
-    updated_at: new Date().toISOString()
-  }, 'id = ?', [req.params.id])
+  const roundedProgress = Math.round(progress)
+  const updateFields = { progress: roundedProgress, updated_at: new Date().toISOString() }
+  if (current_value !== undefined) {
+    updateFields.current_value = current_value
+  }
+  if (roundedProgress >= 100 && existing.status !== 'completed' && existing.status !== 'cancelled' && existing.status !== 'on-hold') {
+    updateFields.status = 'completed'
+  }
+  update('initiatives', updateFields, 'id = ?', [req.params.id])
 
   // Cascade: Recalculate Key Result and Goal progress
   if (existing.key_result_id) {

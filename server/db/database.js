@@ -118,8 +118,23 @@ function runMigrations() {
   }
 }
 
+// Migration: Add current_value_increment column to weekly_checkin_items
+function migrateCurrentValueIncrement() {
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(weekly_checkin_items)").all()
+    const hasColumn = tableInfo.some(col => col.name === 'current_value_increment')
+    if (!hasColumn) {
+      db.exec('ALTER TABLE weekly_checkin_items ADD COLUMN current_value_increment REAL DEFAULT NULL')
+      console.log('Migration: Added current_value_increment column to weekly_checkin_items')
+    }
+  } catch (e) {
+    console.error('Migration current_value_increment failed:', e.message)
+  }
+}
+
 // Initialize on import
 initializeDatabase()
 runMigrations()
+migrateCurrentValueIncrement()
 
 export default db

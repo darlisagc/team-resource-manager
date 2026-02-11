@@ -200,10 +200,14 @@ function recalculateKeyResultProgress(keyResultId) {
   const avgProgress = initiatives.reduce((sum, i) => sum + (i.progress || 0), 0) / initiatives.length
   const rounded = Math.round(avgProgress)
 
-  update('key_results', {
-    progress: rounded,
-    updated_at: new Date().toISOString()
-  }, 'id = ?', [keyResultId])
+  const updateFields = { progress: rounded, updated_at: new Date().toISOString() }
+  if (rounded >= 100) {
+    const kr = getOne('SELECT status FROM key_results WHERE id = ?', [keyResultId])
+    if (kr && kr.status !== 'completed' && kr.status !== 'cancelled') {
+      updateFields.status = 'completed'
+    }
+  }
+  update('key_results', updateFields, 'id = ?', [keyResultId])
 
   return rounded
 }

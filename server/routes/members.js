@@ -32,10 +32,15 @@ router.get('/', (req, res) => {
       (SELECT COALESCE(SUM(hours), 0) FROM time_off
        WHERE team_member_id = tm.id
        AND start_date >= ? AND end_date <= ?
-      ) as time_off_hours
+      ) as time_off_hours,
+      (SELECT COALESCE(SUM(hours), 0) FROM time_off
+       WHERE team_member_id = tm.id
+       AND type = 'other'
+       AND start_date >= ? AND end_date <= ?
+      ) as capacity_adjustment_hours
     FROM team_members tm
     ORDER BY tm.name
-  `, [startDate, endDate, startDate, endDate])
+  `, [startDate, endDate, startDate, endDate, startDate, endDate])
 
   // Calculate utilization from weekly check-ins
   // Utilization = (Hours worked from check-ins + Time off) / Total quarter capacity * 100
@@ -50,6 +55,13 @@ router.get('/', (req, res) => {
       : 0
     const lastWeek = member.last_week_allocation || 0
 
+    // Effective capacity: factor in type='other' capacity adjustments
+    const capacityAdjustmentHours = member.capacity_adjustment_hours || 0
+    const hasCapacityAdjustment = capacityAdjustmentHours > 0
+    const effectiveQuarterlyHours = (member.weekly_hours * weeksInQuarter) - capacityAdjustmentHours
+    const effectiveWeeklyHours = effectiveQuarterlyHours / weeksInQuarter
+    const effectiveFte = effectiveWeeklyHours / 40
+
     return {
       ...member,
       current_allocation: Math.round(utilization * 10) / 10,
@@ -57,7 +69,11 @@ router.get('/', (req, res) => {
       time_off_hours: member.time_off_hours,
       checkin_count: member.checkin_count,
       hours_worked: Math.round(hoursWorked),
-      total_capacity_hours: Math.round(totalCapacityHours)
+      total_capacity_hours: Math.round(totalCapacityHours),
+      capacity_adjustment_hours: capacityAdjustmentHours,
+      effective_weekly_hours: Math.round(effectiveWeeklyHours * 10) / 10,
+      effective_fte: Math.round(effectiveFte * 100) / 100,
+      has_capacity_adjustment: hasCapacityAdjustment
     }
   })
 
@@ -71,6 +87,26 @@ router.get('/:id', (req, res) => {
   if (!member) {
     return res.status(404).json({ message: 'Team member not found' })
   }
+
+  // Compute effective capacity for current quarter
+  const now = new Date()
+  const qNum = Math.ceil((now.getMonth() + 1) / 3)
+  const yr = now.getFullYear()
+  const sMonth = (qNum - 1) * 3
+  const qStart = `${yr}-${String(sMonth + 1).padStart(2, '0')}-01`
+  const qEnd = `${yr}-${String(sMonth + 3).padStart(2, '0')}-${qNum === 1 || qNum === 4 ? '31' : '30'}`
+  const weeksInQ = 13
+
+  const adjRow = getOne(
+    `SELECT COALESCE(SUM(hours), 0) as capacity_adjustment_hours FROM time_off
+     WHERE team_member_id = ? AND type = 'other' AND start_date >= ? AND end_date <= ?`,
+    [req.params.id, qStart, qEnd]
+  )
+  const capacityAdjustmentHours = adjRow?.capacity_adjustment_hours || 0
+  const hasCapacityAdjustment = capacityAdjustmentHours > 0
+  const effectiveQuarterlyHours = (member.weekly_hours * weeksInQ) - capacityAdjustmentHours
+  const effectiveWeeklyHours = effectiveQuarterlyHours / weeksInQ
+  const effectiveFte = effectiveWeeklyHours / 40
 
   // Get time off records
   const timeOff = getAll(
@@ -139,6 +175,10 @@ router.get('/:id', (req, res) => {
 
   res.json({
     ...member,
+    capacity_adjustment_hours: capacityAdjustmentHours,
+    effective_weekly_hours: Math.round(effectiveWeeklyHours * 10) / 10,
+    effective_fte: Math.round(effectiveFte * 100) / 100,
+    has_capacity_adjustment: hasCapacityAdjustment,
     timeOff,
     allocations,
     initiatives,

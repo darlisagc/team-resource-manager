@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS weekly_checkin_items (
   key_result_id INTEGER,
   time_allocation_pct REAL DEFAULT 0 CHECK(time_allocation_pct >= 0 AND time_allocation_pct <= 100),
   progress_contribution_pct REAL DEFAULT 0 CHECK(progress_contribution_pct >= 0 AND progress_contribution_pct <= 100),
+  current_value_increment REAL DEFAULT NULL,
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -345,3 +346,10 @@ CREATE TABLE IF NOT EXISTS initiative_updates (
 );
 
 CREATE INDEX IF NOT EXISTS idx_initiative_updates_initiative ON initiative_updates(initiative_id);
+
+CREATE TABLE IF NOT EXISTS calendar_feeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -14,10 +14,15 @@ function recalculateKeyResultProgress(keyResultId) {
   if (initiatives.length === 0) return
 
   const avgProgress = initiatives.reduce((sum, i) => sum + (i.progress || 0), 0) / initiatives.length
-  update('key_results', {
-    progress: Math.round(avgProgress),
-    updated_at: new Date().toISOString()
-  }, 'id = ?', [keyResultId])
+  const rounded = Math.round(avgProgress)
+  const updateFields = { progress: rounded, updated_at: new Date().toISOString() }
+  if (rounded >= 100) {
+    const kr = getOne('SELECT status FROM key_results WHERE id = ?', [keyResultId])
+    if (kr && kr.status !== 'completed' && kr.status !== 'cancelled') {
+      updateFields.status = 'completed'
+    }
+  }
+  update('key_results', updateFields, 'id = ?', [keyResultId])
 }
 
 // Helper: Recalculate Goal progress from its key results
@@ -131,6 +136,8 @@ router.get('/week/:weekStart', (req, res) => {
       wci.*,
       i.name as initiative_name,
       i.category as category,
+      i.current_value,
+      i.target_value,
       kr.title as key_result_title,
       COALESCE(g_init.title, g_kr.title) as goal_title
     FROM weekly_checkin_items wci
@@ -174,6 +181,8 @@ router.get('/member/:memberId/week/:weekStart', (req, res) => {
       wci.*,
       i.name as initiative_name,
       i.category as category,
+      i.current_value,
+      i.target_value,
       kr.title as key_result_title,
       COALESCE(g_init.title, g_kr.title) as goal_title
     FROM weekly_checkin_items wci
@@ -328,6 +337,7 @@ router.post('/', (req, res) => {
         key_result_id: keyResultId,
         time_allocation_pct: item.time_allocation_pct || 0,
         progress_contribution_pct: item.progress_contribution_pct || 0,
+        current_value_increment: item.current_value_increment != null ? item.current_value_increment : null,
         notes: item.notes || null
       })
 
@@ -348,10 +358,32 @@ router.post('/', (req, res) => {
 
     // Use processedItems which has the actual initiative IDs (including newly created ones)
     for (const item of processedItems) {
+      // Handle target-based initiatives with current_value_increment
+      if (item.current_value_increment > 0 && item.initiative_id) {
+        const initiative = getOne('SELECT current_value, target_value, progress, key_result_id, status FROM initiatives WHERE id = ?', [item.initiative_id])
+        if (initiative && initiative.target_value) {
+          const newCurrentValue = Math.min(initiative.target_value, (initiative.current_value || 0) + item.current_value_increment)
+          const newProgress = Math.min(100, Math.round((newCurrentValue / initiative.target_value) * 100))
+          const initUpdateFields = {
+            current_value: newCurrentValue,
+            progress: newProgress,
+            updated_at: new Date().toISOString()
+          }
+          if (newProgress >= 100 && initiative.status !== 'completed' && initiative.status !== 'cancelled' && initiative.status !== 'on-hold') {
+            initUpdateFields.status = 'completed'
+          }
+          update('initiatives', initUpdateFields, 'id = ?', [item.initiative_id])
+
+          if (initiative.key_result_id) {
+            affectedKeyResultIds.add(initiative.key_result_id)
+          }
+        }
+      }
+
       if (item.progress_contribution_pct > 0) {
         if (item.initiative_id) {
           // Get current initiative progress and count of assignees
-          const initiative = getOne('SELECT progress, key_result_id FROM initiatives WHERE id = ?', [item.initiative_id])
+          const initiative = getOne('SELECT progress, key_result_id, status FROM initiatives WHERE id = ?', [item.initiative_id])
           const assigneeCount = getOne('SELECT COUNT(*) as count FROM initiative_assignments WHERE initiative_id = ?', [item.initiative_id])
           if (initiative) {
             const numAssignees = Math.max(1, assigneeCount?.count || 1)
@@ -359,10 +391,12 @@ router.post('/', (req, res) => {
             // So their contribution is scaled: contribution * (100 / numAssignees) / 100
             const scaledContribution = item.progress_contribution_pct / numAssignees
             const newProgress = Math.min(100, (initiative.progress || 0) + scaledContribution)
-            update('initiatives', {
-              progress: Math.round(newProgress * 100) / 100, // Round to 2 decimals
-              updated_at: new Date().toISOString()
-            }, 'id = ?', [item.initiative_id])
+            const roundedProgress = Math.round(newProgress * 100) / 100
+            const initUpdateFields = { progress: roundedProgress, updated_at: new Date().toISOString() }
+            if (roundedProgress >= 100 && initiative.status !== 'completed' && initiative.status !== 'cancelled' && initiative.status !== 'on-hold') {
+              initUpdateFields.status = 'completed'
+            }
+            update('initiatives', initUpdateFields, 'id = ?', [item.initiative_id])
 
             // Track affected key result for cascade
             if (initiative.key_result_id) {
@@ -372,16 +406,18 @@ router.post('/', (req, res) => {
         }
         if (item.key_result_id) {
           // Get current key result progress and count of assignees
-          const kr = getOne('SELECT progress, goal_id FROM key_results WHERE id = ?', [item.key_result_id])
+          const kr = getOne('SELECT progress, goal_id, status FROM key_results WHERE id = ?', [item.key_result_id])
           const assigneeCount = getOne('SELECT COUNT(*) as count FROM key_result_assignees WHERE key_result_id = ?', [item.key_result_id])
           if (kr) {
             const numAssignees = Math.max(1, assigneeCount?.count || 1)
             const scaledContribution = item.progress_contribution_pct / numAssignees
             const newProgress = Math.min(100, (kr.progress || 0) + scaledContribution)
-            update('key_results', {
-              progress: Math.round(newProgress * 100) / 100,
-              updated_at: new Date().toISOString()
-            }, 'id = ?', [item.key_result_id])
+            const roundedKrProgress = Math.round(newProgress * 100) / 100
+            const krUpdateFields = { progress: roundedKrProgress, updated_at: new Date().toISOString() }
+            if (roundedKrProgress >= 100 && kr.status !== 'completed' && kr.status !== 'cancelled') {
+              krUpdateFields.status = 'completed'
+            }
+            update('key_results', krUpdateFields, 'id = ?', [item.key_result_id])
 
             // Track affected goal for cascade
             if (kr.goal_id) {
@@ -415,6 +451,8 @@ router.post('/', (req, res) => {
       wci.*,
       i.name as initiative_name,
       i.category as category,
+      i.current_value,
+      i.target_value,
       kr.title as key_result_title
     FROM weekly_checkin_items wci
     LEFT JOIN initiatives i ON wci.initiative_id = i.id
@@ -537,6 +575,8 @@ router.get('/team/:weekStart', (req, res) => {
         wci.*,
         i.name as initiative_name,
         i.category as category,
+        i.current_value,
+        i.target_value,
         kr.title as key_result_title,
         COALESCE(g_init.title, g_kr.title) as goal_title
       FROM weekly_checkin_items wci

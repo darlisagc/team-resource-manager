@@ -163,6 +163,18 @@ export default function TeamOverview() {
                   <span className="text-sw-gray text-sm">FTE</span>
                   <span className="text-sw-gold font-orbitron">{formatFTE(selectedMember.weekly_hours)}</span>
                 </div>
+                {selectedMember.has_capacity_adjustment && (
+                  <>
+                    <div className="flex justify-between py-2 border-b border-sw-gray/20">
+                      <span className="text-sw-gray text-sm">Effective Weekly Hours</span>
+                      <span className="text-sw-blue font-orbitron">{selectedMember.effective_weekly_hours}h</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-sw-gray/20">
+                      <span className="text-sw-gray text-sm">Effective FTE</span>
+                      <span className="text-sw-blue font-orbitron">{selectedMember.effective_fte} FTE</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between py-2 border-b border-sw-gray/20">
                   <span className="text-sw-gray text-sm">Email</span>
                   <span className="text-sw-light text-sm">{selectedMember.email || '-'}</span>
@@ -433,7 +445,14 @@ function MemberCard({ member, isSelected, onClick, onEdit, onDelete }) {
           <p className="text-sw-gray text-xs truncate">{member.role}</p>
         </div>
         <div className="text-right">
-          <p className="text-sw-gold font-orbitron text-sm">{member.weekly_hours}h</p>
+          {member.has_capacity_adjustment ? (
+            <>
+              <p className="text-sw-gold font-orbitron text-sm">{member.effective_weekly_hours}h <span className="text-sw-gray text-xs font-sans">eff.</span></p>
+              <p className="text-sw-gray text-xs">{member.weekly_hours}h base</p>
+            </>
+          ) : (
+            <p className="text-sw-gold font-orbitron text-sm">{member.weekly_hours}h</p>
+          )}
           <p className={`text-xs ${member.current_allocation > 100 ? 'text-sw-red' : member.current_allocation > 0 ? 'text-sw-green' : 'text-sw-gray'}`}>
             {member.current_allocation || 0}% util
           </p>

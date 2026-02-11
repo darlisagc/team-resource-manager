@@ -100,6 +100,10 @@ router.get('/', (req, res) => {
       COALESCE((SELECT SUM(hours) FROM time_off
                 WHERE team_member_id = tm.id
                 AND start_date >= ? AND end_date <= ?), 0) as time_off_hours,
+      COALESCE((SELECT SUM(hours) FROM time_off
+                WHERE team_member_id = tm.id
+                AND type = 'other'
+                AND start_date >= ? AND end_date <= ?), 0) as capacity_adjustment_hours,
       COALESCE((SELECT SUM(
                   CASE WHEN i.estimated_hours > 0 THEN i.estimated_hours
                        WHEN i.start_date IS NOT NULL AND i.end_date IS NOT NULL
@@ -116,7 +120,7 @@ router.get('/', (req, res) => {
     FROM team_members tm
     GROUP BY tm.id
     ORDER BY total_allocation_sum DESC
-  `, [startDate, endDate, startDate, endDate, startDate, endDate])
+  `, [startDate, endDate, startDate, endDate, startDate, endDate, startDate, endDate])
 
   // Calculate utilization metrics
   // Utilization = (Hours worked from check-ins + Time off) / Total quarter capacity * 100
@@ -133,6 +137,13 @@ router.get('/', (req, res) => {
       ? ((hoursWorked + member.time_off_hours + eventHours) / totalCapacityHours) * 100
       : 0
 
+    // Effective capacity: factor in type='other' capacity adjustments
+    const capacityAdjustmentHours = member.capacity_adjustment_hours || 0
+    const hasCapacityAdjustment = capacityAdjustmentHours > 0
+    const effectiveQuarterlyHours = (member.weekly_hours * weeksInQuarter) - capacityAdjustmentHours
+    const effectiveWeeklyHours = effectiveQuarterlyHours / weeksInQuarter
+    const effectiveFte = effectiveWeeklyHours / 40
+
     return {
       id: member.id,
       name: member.name,
@@ -147,7 +158,11 @@ router.get('/', (req, res) => {
       timeOffHours: member.time_off_hours,
       timeOffPercent: totalCapacityHours > 0 ? Math.round((member.time_off_hours / totalCapacityHours) * 1000) / 10 : 0,
       eventHours: eventHours,
-      eventPercent: totalCapacityHours > 0 ? Math.round((eventHours / totalCapacityHours) * 1000) / 10 : 0
+      eventPercent: totalCapacityHours > 0 ? Math.round((eventHours / totalCapacityHours) * 1000) / 10 : 0,
+      capacityAdjustmentHours,
+      effectiveWeeklyHours: Math.round(effectiveWeeklyHours * 10) / 10,
+      effectiveFTE: Math.round(effectiveFte * 100) / 100,
+      hasCapacityAdjustment
     }
   })
 
@@ -189,12 +204,16 @@ router.get('/', (req, res) => {
     ORDER BY avg_allocation DESC
   `, [startDate, endDate])
 
+  // Calculate effective total FTE from utilization data
+  const effectiveTotalFTE = Math.round(utilizationData.reduce((sum, m) => sum + m.effectiveFTE, 0) * 100) / 100
+
   res.json({
     quarter,
     team: {
       totalMembers: teamStats.total_members,
       totalWeeklyHours: teamStats.total_weekly_hours,
-      totalFTE: Math.round(teamStats.total_fte * 100) / 100
+      totalFTE: Math.round(teamStats.total_fte * 100) / 100,
+      effectiveTotalFTE
     },
     goals: {
       total: goalStats.total_goals || 0,

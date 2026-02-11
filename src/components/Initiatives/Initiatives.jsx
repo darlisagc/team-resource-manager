@@ -226,7 +226,7 @@ export default function Initiatives() {
     const totalFTEWeeks = totalEstimatedHours / 40
 
     // Team capacity
-    const totalWeeklyHours = teamMembers.reduce((sum, m) => sum + (m.weekly_hours || 40), 0)
+    const totalWeeklyHours = teamMembers.reduce((sum, m) => sum + (m.effective_weekly_hours || m.weekly_hours || 40), 0)
     const totalCapacityHours = totalWeeklyHours * WEEKS_PER_QUARTER
     const totalTimeOffHours = timeOff.reduce((sum, t) => sum + (t.hours || 0), 0)
     const availableHours = totalCapacityHours - totalTimeOffHours

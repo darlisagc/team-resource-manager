@@ -50,9 +50,47 @@ function isTrackedMember(name, memberNames) {
   })
 }
 
-// Get configured calendar feeds
+// Get configured calendar feeds (from DB, seed default on first access)
 router.get('/feeds', (req, res) => {
-  res.json(DEFAULT_ICAL_FEEDS)
+  let feeds = getAll('SELECT id, name, url, created_at FROM calendar_feeds ORDER BY id')
+  if (feeds.length === 0) {
+    // Seed with default Personio feed on first access
+    for (const defaultFeed of DEFAULT_ICAL_FEEDS) {
+      insert('calendar_feeds', { name: defaultFeed.name, url: defaultFeed.url })
+    }
+    feeds = getAll('SELECT id, name, url, created_at FROM calendar_feeds ORDER BY id')
+  }
+  res.json(feeds)
+})
+
+// Add a new calendar feed
+router.post('/feeds', (req, res) => {
+  const { name, url } = req.body || {}
+  const result = insert('calendar_feeds', { name: name || '', url: url || '' })
+  const feed = getOne('SELECT id, name, url, created_at FROM calendar_feeds WHERE id = ?', [result.lastInsertRowid])
+  res.json(feed)
+})
+
+// Update a calendar feed
+router.put('/feeds/:id', (req, res) => {
+  const { name, url } = req.body
+  const existing = getOne('SELECT id FROM calendar_feeds WHERE id = ?', [req.params.id])
+  if (!existing) {
+    return res.status(404).json({ message: 'Feed not found' })
+  }
+  run('UPDATE calendar_feeds SET name = ?, url = ? WHERE id = ?', [name || '', url || '', req.params.id])
+  const feed = getOne('SELECT id, name, url, created_at FROM calendar_feeds WHERE id = ?', [req.params.id])
+  res.json(feed)
+})
+
+// Delete a calendar feed
+router.delete('/feeds/:id', (req, res) => {
+  const existing = getOne('SELECT id FROM calendar_feeds WHERE id = ?', [req.params.id])
+  if (!existing) {
+    return res.status(404).json({ message: 'Feed not found' })
+  }
+  run('DELETE FROM calendar_feeds WHERE id = ?', [req.params.id])
+  res.json({ success: true })
 })
 
 // Calculate similarity between two names
@@ -82,10 +120,13 @@ router.post('/sync', async (req, res) => {
 
   // nameMappings: { "Name From Calendar": memberId } - user-provided mappings for unmatched names
 
-  // Use provided URLs or defaults
-  const urls = feedUrls && feedUrls.length > 0
+  // Use provided URLs or load from DB
+  let urls = feedUrls && feedUrls.length > 0
     ? feedUrls
-    : DEFAULT_ICAL_FEEDS.map(f => f.url)
+    : getAll('SELECT url FROM calendar_feeds').map(f => f.url)
+  if (urls.length === 0) {
+    urls = DEFAULT_ICAL_FEEDS.map(f => f.url)
+  }
 
   try {
     const results = {
@@ -190,11 +231,12 @@ router.post('/sync', async (req, res) => {
                 continue
               }
 
-              // Check if already exists
+              // Check if already exists (same member, same month/day, birthday type)
               const existing = getOne(`
                 SELECT id FROM time_off
-                WHERE team_member_id = ? AND start_date = ? AND type = 'birthday'
-              `, [memberId, startDate])
+                WHERE team_member_id = ? AND type = 'birthday'
+                AND (start_date = ? OR (substr(start_date, 6) = substr(?, 6)))
+              `, [memberId, startDate, startDate])
 
               if (existing) {
                 feedResult.skipped++
@@ -256,13 +298,23 @@ router.post('/sync', async (req, res) => {
                 const memberId = memberMap.get(memberName.toLowerCase())
                 if (!memberId) continue
 
-                // Check if already exists
+                // Check if already exists - match by date range overlap AND type for this member
+                // This prevents duplicates when the same holiday appears in multiple feeds
+                // or with slightly different dates (e.g. observed vs actual)
                 const existing = getOne(`
                   SELECT id FROM time_off
-                  WHERE team_member_id = ? AND start_date = ? AND end_date = ? AND type = 'bank_holiday'
-                `, [memberId, startDate, endDate])
+                  WHERE team_member_id = ? AND type = 'bank_holiday'
+                  AND (
+                    (start_date = ? AND end_date = ?)
+                    OR (start_date <= ? AND end_date >= ?)
+                    OR (start_date >= ? AND start_date < ?)
+                  )
+                `, [memberId, startDate, endDate, startDate, startDate, startDate, endDate])
 
-                if (existing) continue
+                if (existing) {
+                  feedResult.skipped++
+                  continue
+                }
 
                 insert('time_off', {
                   team_member_id: memberId,
@@ -380,7 +432,7 @@ router.post('/sync', async (req, res) => {
             const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
             const hours = days * 8
 
-            // Check if this event already exists (by UID)
+            // Check if this event already exists (by UID stored in notes)
             const existingByUid = getOne(
               'SELECT id FROM time_off WHERE notes = ?',
               [event.uid]
@@ -391,15 +443,17 @@ router.post('/sync', async (req, res) => {
               continue
             }
 
-            // Check for overlapping records (same person, overlapping dates)
+            // Check for overlapping records (same person, same type, overlapping dates)
+            // This prevents duplicates when the same time-off appears in multiple calendar feeds
             const existing = getOne(`
               SELECT id FROM time_off
-              WHERE team_member_id = ?
+              WHERE team_member_id = ? AND type = ?
               AND (
-                (start_date <= ? AND end_date >= ?)
+                (start_date = ? AND end_date = ?)
+                OR (start_date <= ? AND end_date >= ?)
                 OR (start_date >= ? AND start_date < ?)
               )
-            `, [memberId, startDate, startDate, startDate, endDate])
+            `, [memberId, timeOffType, startDate, endDate, startDate, startDate, startDate, endDate])
 
             if (existing) {
               feedResult.skipped++

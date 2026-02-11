@@ -228,6 +228,9 @@ export default function WeeklyCheckin() {
               uniqueId = item.initiative_id || item.key_result_id
             }
 
+            // Look up target info from initiatives for target-based progress
+            const init = item.initiative_id ? initiatives.find(i => i.id === item.initiative_id) : null
+
             return {
               type,
               id: uniqueId,
@@ -235,7 +238,10 @@ export default function WeeklyCheckin() {
               goalTitle: isEvent ? 'Events' : item.goal_title,
               isOwner: isMisc || isBau || isEvent ? true : isOwner,
               time: item.time_allocation_pct || 0,
-              progress: item.progress_contribution_pct || 0
+              progress: item.progress_contribution_pct || 0,
+              targetValue: init?.target_value || item.target_value || null,
+              currentValue: init?.current_value || item.current_value || 0,
+              currentValueIncrement: item.current_value_increment || 0,
             }
           })
 
@@ -261,7 +267,9 @@ export default function WeeklyCheckin() {
               goalTitle: 'Events',
               isOwner: ev.owner_id === selectedMember?.id,
               time: ev.actual_hours ? hoursToPercentage(ev.actual_hours) : 0,
-              progress: ev.progress || 0
+              progress: ev.progress || 0,
+              targetValue: ev.target_value || null,
+              currentValue: ev.current_value || 0,
             }))
 
           setWorkedItems([...restored, ...eventsToAdd])
@@ -290,7 +298,9 @@ export default function WeeklyCheckin() {
             goalTitle: 'Events',
             isOwner: ev.owner_id === selectedMember?.id,
             time: ev.actual_hours ? hoursToPercentage(ev.actual_hours) : 0,
-            progress: ev.progress || 0
+            progress: ev.progress || 0,
+            targetValue: ev.target_value || null,
+            currentValue: ev.current_value || 0,
           })))
         }
       }
@@ -345,15 +355,20 @@ export default function WeeklyCheckin() {
               currentProgress = init?.progress || 0
             }
 
+            // Look up target info from initiatives
+            const initData = item.initiative_id ? initiatives.find(i => i.id === item.initiative_id) : null
+
             return {
               type,
               id: uniqueId,
               name: (isMisc || isBau) ? (item.notes || '') : (item.initiative_name || item.key_result_title),
               goalTitle: item.goal_title,
-              isOwner: isMisc || isBau ? true : (item.initiative_id ? initiatives.find(i => i.id === item.initiative_id)?.owner_id === selectedMember?.id : false),
+              isOwner: isMisc || isBau ? true : (item.initiative_id ? initData?.owner_id === selectedMember?.id : false),
               time: 0, // Reset time for new week
               progress: currentProgress,
-              isBauInitiative: type === 'initiative' && initiatives.find(i => i.id === item.initiative_id)?.goal_title?.includes('Business as Usual')
+              isBauInitiative: type === 'initiative' && initData?.goal_title?.includes('Business as Usual'),
+              targetValue: initData?.target_value || null,
+              currentValue: initData?.current_value || 0,
             }
           })
 
@@ -467,7 +482,9 @@ export default function WeeklyCheckin() {
         time: 0,
         progress: initialProgress,
         category: type === 'bau' ? '' : undefined,
-        isBauInitiative: isBauInit
+        isBauInitiative: isBauInit,
+        targetValue: (type === 'initiative') ? (item.target_value || null) : null,
+        currentValue: (type === 'initiative') ? (item.current_value || 0) : null,
       }])
     }
   }
@@ -513,8 +530,23 @@ export default function WeeklyCheckin() {
       }
     }
 
-    // For ALL initiatives (including BAU), sync progress when owner changes it
-    if (type === 'initiative' && field === 'progress' && item?.isOwner) {
+    // For target-based initiatives, sync progress from increment
+    if (type === 'initiative' && field === 'currentValueIncrement' && item?.isOwner && item?.targetValue) {
+      try {
+        const newCurrentValue = Math.min(item.targetValue, (item.currentValue || 0) + value)
+        const newProgress = Math.min(100, Math.round((newCurrentValue / item.targetValue) * 100))
+        await fetch(`/api/initiatives/${id}/progress`, {
+          method: 'PATCH',
+          headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ progress: newProgress, current_value: newCurrentValue })
+        })
+      } catch (error) {
+        console.error('Failed to sync target-based progress to initiative:', error)
+      }
+    }
+
+    // For non-target initiatives, sync progress when owner changes it
+    if (type === 'initiative' && field === 'progress' && item?.isOwner && !item?.targetValue) {
       try {
         await fetch(`/api/initiatives/${id}/progress`, {
           method: 'PATCH',
@@ -560,7 +592,8 @@ export default function WeeklyCheckin() {
         is_bau: w.type === 'bau',
         is_event: w.type === 'event',
         time_allocation_pct: w.time,
-        progress_contribution_pct: w.progress,
+        progress_contribution_pct: w.targetValue ? 0 : w.progress,
+        current_value_increment: w.targetValue ? (w.currentValueIncrement || 0) : null,
         notes: (w.type === 'misc' || w.type === 'bau' || w.type === 'event') ? w.name : null,
         category: w.type === 'bau' ? w.category : null
       }))
@@ -1172,7 +1205,15 @@ export default function WeeklyCheckin() {
                       <span className="text-sw-gray text-xs ml-1">({percentageToHours(item.time)}h)</span>
                     </div>
                     <div className="col-span-3 text-right">
-                      {item.isOwner ? <span className="text-green-400 font-orbitron">{item.progress}%</span> : <span className="text-sw-gray text-xs">-</span>}
+                      {item.isOwner ? (
+                        item.targetValue ? (
+                          <span className="text-green-400 font-orbitron">
+                            {(item.currentValue || 0) + (item.currentValueIncrement || 0)}/{item.targetValue}
+                          </span>
+                        ) : (
+                          <span className="text-green-400 font-orbitron">{item.progress}%</span>
+                        )
+                      ) : <span className="text-sw-gray text-xs">-</span>}
                     </div>
                   </div>
                 ))}
@@ -1642,21 +1683,54 @@ export default function WeeklyCheckin() {
                         {/* Progress - Only shown if user is the owner */}
                         {item.isOwner && (
                           <div>
-                            <label className="block text-sw-gray text-xs mb-1">Progress Made</label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                step="5"
-                                value={item.progress}
-                                onChange={(e) => updateWorkedItem(item.type, item.id, 'progress', parseInt(e.target.value))}
-                                className="flex-1 h-2 bg-sw-darker rounded-lg appearance-none cursor-pointer accent-green-500"
-                                disabled={checkinStatus === 'submitted'}
-                              />
-                              <span className="text-green-400 font-orbitron w-12 text-right">{item.progress}%</span>
-                            </div>
-                            <p className="text-sw-gray text-xs mt-0.5">of total deliverable</p>
+                            {item.targetValue ? (
+                              <>
+                                <label className="block text-sw-gray text-xs mb-1">Units Completed This Week</label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={Math.max(0, item.targetValue - (item.currentValue || 0))}
+                                    value={item.currentValueIncrement || 0}
+                                    onChange={(e) => updateWorkedItem(item.type, item.id, 'currentValueIncrement', Math.max(0, parseInt(e.target.value) || 0))}
+                                    className="w-20 px-2 py-1 bg-sw-darker border border-sw-gray/30 rounded text-sw-light font-orbitron text-center focus:border-green-500 focus:outline-none"
+                                    disabled={checkinStatus === 'submitted'}
+                                  />
+                                  <span className="text-green-400 font-orbitron text-sm">
+                                    {(item.currentValue || 0)} + {item.currentValueIncrement || 0} / {item.targetValue}
+                                  </span>
+                                </div>
+                                <div className="mt-1">
+                                  <div className="w-full h-1.5 bg-sw-darker rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-green-500 transition-all"
+                                      style={{ width: `${Math.min(100, (((item.currentValue || 0) + (item.currentValueIncrement || 0)) / item.targetValue) * 100)}%` }}
+                                    />
+                                  </div>
+                                  <p className="text-sw-gray text-xs mt-0.5">
+                                    {Math.min(100, Math.round((((item.currentValue || 0) + (item.currentValueIncrement || 0)) / item.targetValue) * 100))}% of target
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <label className="block text-sw-gray text-xs mb-1">Progress Made</label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                    value={item.progress}
+                                    onChange={(e) => updateWorkedItem(item.type, item.id, 'progress', parseInt(e.target.value))}
+                                    className="flex-1 h-2 bg-sw-darker rounded-lg appearance-none cursor-pointer accent-green-500"
+                                    disabled={checkinStatus === 'submitted'}
+                                  />
+                                  <span className="text-green-400 font-orbitron w-12 text-right">{item.progress}%</span>
+                                </div>
+                                <p className="text-sw-gray text-xs mt-0.5">of total deliverable</p>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
