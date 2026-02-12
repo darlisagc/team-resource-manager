@@ -177,7 +177,8 @@ export default function Initiatives() {
     try {
       let url = '/api/timeoff'
 
-      // Filter by quarter's date range if a specific quarter is selected
+      // Filter by quarter's date range only for specific quarters (Q1, Q2, etc.)
+      // For "Full Year" and "All (Overview)" - fetch all time off (no date filter)
       if (quarter && quarter !== 'Full Year' && quarter !== 'All (Overview)') {
         // Parse quarter string (e.g., "Q2 2026")
         const match = quarter.match(/Q(\d)\s+(\d{4})/)
@@ -193,12 +194,8 @@ export default function Initiatives() {
 
           url += `?start_date=${startDate}&end_date=${endDate}`
         }
-      } else if (quarter === 'Full Year') {
-        // Full year - get current year's time off
-        const currentYear = new Date().getFullYear()
-        url += `?start_date=${currentYear}-01-01&end_date=${currentYear}-12-31`
       }
-      // For "All (Overview)" - fetch all time off (no date filter)
+      // For "Full Year" and "All (Overview)" - no date filter, show all time off
 
       const res = await fetch(url, { headers: getAuthHeader() })
       const data = await res.json()
