@@ -33,13 +33,13 @@ export default function Initiatives() {
   useEffect(() => {
     fetchQuarters()
     fetchTeamMembers()
-    fetchTimeOff()
     fetchGoalsAndKRs()
   }, [])
 
   useEffect(() => {
     if (selectedQuarter) {
       fetchInitiatives()
+      fetchTimeOff(selectedQuarter)
     }
   }, [selectedQuarter])
 
@@ -173,9 +173,34 @@ export default function Initiatives() {
     }
   }
 
-  const fetchTimeOff = async () => {
+  const fetchTimeOff = async (quarter) => {
     try {
-      const res = await fetch('/api/timeoff', { headers: getAuthHeader() })
+      let url = '/api/timeoff'
+
+      // Filter by quarter's date range if a specific quarter is selected
+      if (quarter && quarter !== 'Full Year' && quarter !== 'All (Overview)') {
+        // Parse quarter string (e.g., "Q2 2026")
+        const match = quarter.match(/Q(\d)\s+(\d{4})/)
+        if (match) {
+          const quarterNum = parseInt(match[1])
+          const year = match[2]
+          const startMonth = (quarterNum - 1) * 3 + 1 // Q1=1, Q2=4, Q3=7, Q4=10
+          const endMonth = startMonth + 2
+          const endDay = [1, 3, 5, 7, 8, 10, 12].includes(endMonth) ? 31 : 30
+
+          const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01`
+          const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${endDay}`
+
+          url += `?start_date=${startDate}&end_date=${endDate}`
+        }
+      } else if (quarter === 'Full Year') {
+        // Full year - get current year's time off
+        const currentYear = new Date().getFullYear()
+        url += `?start_date=${currentYear}-01-01&end_date=${currentYear}-12-31`
+      }
+      // For "All (Overview)" - fetch all time off (no date filter)
+
+      const res = await fetch(url, { headers: getAuthHeader() })
       const data = await res.json()
       setTimeOff(data)
     } catch (error) {

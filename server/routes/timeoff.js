@@ -3,6 +3,13 @@ import { getAll, getOne, insert, update, deleteRow } from '../db/database.js'
 
 const router = Router()
 
+// Helper to calculate days between two dates
+function daysBetween(start, end) {
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+}
+
 // Get all time-off records with filters
 router.get('/', (req, res) => {
   const { team_member_id, type, start_date, end_date } = req.query
@@ -25,18 +32,59 @@ router.get('/', (req, res) => {
     sql += ' AND t.type = ?'
     params.push(type)
   }
-  if (start_date) {
-    sql += ' AND t.start_date >= ?'
+
+  // If date range is provided, find overlapping time off (not just within range)
+  if (start_date && end_date) {
+    // Time off overlaps with range if: t.start_date <= end_date AND t.end_date >= start_date
+    sql += ' AND t.start_date <= ? AND t.end_date >= ?'
+    params.push(end_date, start_date)
+  } else if (start_date) {
+    sql += ' AND t.end_date >= ?'
     params.push(start_date)
-  }
-  if (end_date) {
-    sql += ' AND t.end_date <= ?'
+  } else if (end_date) {
+    sql += ' AND t.start_date <= ?'
     params.push(end_date)
   }
 
   sql += ' ORDER BY t.start_date DESC'
 
-  const records = getAll(sql, params)
+  let records = getAll(sql, params)
+
+  // If date range provided, calculate prorated hours for each entry
+  if (start_date && end_date) {
+    const rangeStart = new Date(start_date)
+    const rangeEnd = new Date(end_date)
+
+    records = records.map(record => {
+      const entryStart = new Date(record.start_date)
+      const entryEnd = new Date(record.end_date)
+
+      // Calculate overlap
+      const overlapStart = entryStart < rangeStart ? rangeStart : entryStart
+      const overlapEnd = entryEnd > rangeEnd ? rangeEnd : entryEnd
+
+      // Calculate total days of the entry and days within range
+      const totalDays = daysBetween(record.start_date, record.end_date)
+      const overlapDays = daysBetween(
+        overlapStart.toISOString().split('T')[0],
+        overlapEnd.toISOString().split('T')[0]
+      )
+
+      // Prorate hours based on overlap
+      const proratedHours = totalDays > 0
+        ? Math.round((record.hours * overlapDays / totalDays) * 10) / 10
+        : record.hours
+
+      return {
+        ...record,
+        original_hours: record.hours,
+        hours: proratedHours,
+        overlap_days: overlapDays,
+        total_days: totalDays
+      }
+    })
+  }
+
   res.json(records)
 })
 
