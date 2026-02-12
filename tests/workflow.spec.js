@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const API_BASE = 'http://localhost:3011/api'
+const API_BASE = process.env.API_BASE || 'http://localhost:3011/api'
 
 // Helper function to login (same pattern as app.spec.js)
 async function login(page) {
