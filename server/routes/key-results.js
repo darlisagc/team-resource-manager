@@ -308,6 +308,31 @@ router.patch('/:id/estimate', (req, res) => {
   res.json({ ...existing, estimated_hours: estimated_hours || 0 })
 })
 
+// Assign key result to a quarter (PATCH)
+router.patch('/:id/quarter', (req, res) => {
+  const existing = getOne('SELECT * FROM key_results WHERE id = ?', [req.params.id])
+  if (!existing) {
+    return res.status(404).json({ message: 'Key Result not found' })
+  }
+
+  const { quarter } = req.body
+  const assignedQuarter = quarter || null
+
+  update('key_results', {
+    assigned_quarter: assignedQuarter,
+    updated_at: new Date().toISOString()
+  }, 'id = ?', [req.params.id])
+
+  const updated = getOne(`
+    SELECT kr.*, g.title as goal_title, g.quarter as goal_quarter
+    FROM key_results kr
+    LEFT JOIN goals g ON kr.goal_id = g.id
+    WHERE kr.id = ?
+  `, [req.params.id])
+
+  res.json(updated)
+})
+
 // =============== Assignee Management ===============
 
 // Add assignee to key result

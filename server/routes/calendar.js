@@ -135,6 +135,7 @@ router.post('/sync', async (req, res) => {
       totalImported: 0,
       totalSkipped: 0,
       totalErrors: 0,
+      totalRemoved: 0,
       unmatchedNames: [] // Names that couldn't be matched
     }
 
@@ -171,8 +172,26 @@ router.post('/sync', async (req, res) => {
         // Fetch and parse iCal
         const events = await ical.async.fromURL(url)
 
+        // Track UIDs seen in this feed for reconciliation
+        const feedUids = new Set()
+
         for (const [key, event] of Object.entries(events)) {
           if (event.type !== 'VEVENT') continue
+
+          // Handle cancelled events — remove from DB if previously synced
+          if (event.status === 'CANCELLED') {
+            if (event.uid) {
+              const cancelled = getOne(
+                "SELECT id FROM time_off WHERE notes = ? AND source = 'ical'",
+                [event.uid]
+              )
+              if (cancelled) {
+                run('DELETE FROM time_off WHERE id = ?', [cancelled.id])
+                feedResult.removed = (feedResult.removed || 0) + 1
+              }
+            }
+            continue
+          }
 
           try {
             const summary = event.summary || ''
@@ -289,9 +308,8 @@ router.post('/sync', async (req, res) => {
                 continue
               }
 
-              // Calculate hours
-              const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
-              const hours = days * 8
+              // Calculate hours (handles partial days from iCal time components)
+              const hours = calculateHours(event.start, event.end, personName, eventType)
 
               // Create time-off for each team member in that country
               for (const memberName of holidayMembers) {
@@ -428,9 +446,11 @@ router.post('/sync', async (req, res) => {
               continue
             }
 
-            // Calculate hours (assuming 8 hours per day)
-            const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))
-            const hours = days * 8
+            // Calculate hours (handles partial days / half-day events)
+            const hours = calculateHours(event.start, event.end, personName, eventType)
+
+            // Track UID for reconciliation (even if we skip it as duplicate)
+            if (event.uid) feedUids.add(event.uid)
 
             // Check if this event already exists (by UID stored in notes)
             const existingByUid = getOne(
@@ -476,6 +496,22 @@ router.post('/sync', async (req, res) => {
             feedResult.errors.push(eventError.message)
           }
         }
+        // Reconcile: remove iCal-synced records whose UID is no longer in the feed
+        // Only target records where notes looks like a UID (no spaces — UIDs don't have spaces,
+        // but descriptive notes like "Birthday - Name" or "Holiday Name (country)" do)
+        if (feedUids.size > 0) {
+          const uidRecords = getAll(
+            "SELECT id, notes FROM time_off WHERE source = 'ical' AND notes NOT LIKE '% %'"
+          )
+          let removedCount = 0
+          for (const record of uidRecords) {
+            if (record.notes && !feedUids.has(record.notes)) {
+              run('DELETE FROM time_off WHERE id = ?', [record.id])
+              removedCount++
+            }
+          }
+          feedResult.removed = (feedResult.removed || 0) + removedCount
+        }
       } catch (fetchError) {
         feedResult.errors.push(`Failed to fetch feed: ${fetchError.message}`)
       }
@@ -484,6 +520,7 @@ router.post('/sync', async (req, res) => {
       results.totalImported += feedResult.imported
       results.totalSkipped += feedResult.skipped
       results.totalErrors += feedResult.errors.length
+      results.totalRemoved = (results.totalRemoved || 0) + (feedResult.removed || 0)
     }
 
     res.json(results)
@@ -610,6 +647,46 @@ router.delete('/clear', (req, res) => {
     message: `Cleared ${result.changes} iCal-imported records`
   })
 })
+
+// Calculate actual hours from iCal event start/end, handling partial days
+function calculateHours(eventStart, eventEnd, personName, eventType = '') {
+  if (!eventStart || !eventEnd) return 8
+
+  const start = new Date(eventStart)
+  const end = new Date(eventEnd)
+  const combinedText = `${personName || ''} ${eventType || ''}`.toLowerCase()
+
+  // Check for explicit hour indicators in name or event type (e.g., "4 hours", "4 hrs", "4h")
+  const hourMatch = combinedText.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b/)
+  if (hourMatch) {
+    const hours = parseFloat(hourMatch[1])
+    if (hours > 0 && hours <= 8) {
+      return hours
+    }
+  }
+
+  // Check if start and end are on the same calendar day with actual time components
+  const sameDay = start.getFullYear() === end.getFullYear() &&
+                  start.getMonth() === end.getMonth() &&
+                  start.getDate() === end.getDate()
+
+  if (sameDay) {
+    const diffHours = (end - start) / (1000 * 60 * 60)
+    if (diffHours > 0 && diffHours < 8) {
+      return Math.round(diffHours * 10) / 10 // e.g. 4 hours for a half-day
+    }
+  }
+
+  // Check for half-day indicator in person name or event type (Personio uses "½" or "half day")
+  if (/½/.test(combinedText) || /half\s*day/i.test(combinedText) || /0\.5\s*day/i.test(combinedText)) {
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
+    return days > 1 ? (days * 8) / 2 : 4
+  }
+
+  // Default: full days * 8 hours
+  const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
+  return days * 8
+}
 
 // Helper to format date as YYYY-MM-DD
 function formatDate(date) {

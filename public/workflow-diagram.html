@@ -634,10 +634,12 @@
             </div>
           </div>
           <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+            <span class="updated-badge">UPD</span>
             <div class="feature-card-title" style="color: #E91E63;">MOVE INITIATIVE</div>
             <div class="feature-card-desc">
               Move between goals & key results<br>
               Browse all goals with their KRs<br>
+              Move to BAU (auto-assigns to "Track BAU and miscellaneous work" KR)<br>
               Reorganize work as priorities shift
             </div>
           </div>
@@ -936,8 +938,9 @@
 
         <div class="flow-vertical">
           <div class="node node-action" style="min-width: 200px;">
+            <span class="updated-badge">UPD</span>
             <div class="node-title">GOAL INITIATIVES</div>
-            <div class="node-desc">Estimate hours per initiative</div>
+            <div class="node-desc">Per-member allocation %</div>
           </div>
           <div class="node node-action" style="min-width: 200px; border-color: #4BD5EE;">
             <div class="node-title" style="color: #4BD5EE;">KEY RESULT ESTIMATES</div>
@@ -964,6 +967,56 @@
 
         <div class="node node-end">
           <div class="node-title">QUARTER PLANNED</div>
+        </div>
+      </div>
+
+      <!-- Per-Member Allocation Detail -->
+      <div style="margin-top: 30px;">
+        <p style="text-align: center; color: #E91E63; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; margin-bottom: 15px;">
+          <span style="background: #E91E63; color: #fff; font-size: 0.55rem; padding: 3px 6px; border-radius: 10px; font-weight: bold; margin-right: 8px;">NEW</span>
+          PER-MEMBER ALLOCATION FLOW
+        </p>
+        <div class="flow">
+          <div class="node node-action">
+            <div class="node-title">EXPAND INITIATIVE</div>
+            <div class="node-desc">Click ▶ to expand</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action" style="min-width: 180px;">
+            <div class="node-title">ADD MEMBER</div>
+            <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+              Select from team list<br>
+              Set role (Lead/Contributor)
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action" style="min-width: 200px;">
+            <div class="node-title">SET ALLOCATION %</div>
+            <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+              Per-member percentage<br>
+              e.g., Fabian @ 50%<br>
+              Auto-calculates hours<br>
+              (50% × 40h × 13wks = 260h)
+            </div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-action">
+            <div class="node-title">AUTO-SYNC</div>
+            <div class="node-desc">Updates initiative hours</div>
+          </div>
+
+          <div class="arrow">→</div>
+
+          <div class="node node-end">
+            <div class="node-title">EXPORT READY</div>
+            <div class="node-desc">Shows per-member data</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1084,9 +1137,13 @@
             <div class="node-desc">From check-ins</div>
           </div>
           <div style="color: #888; font-size: 0.8rem;">OR</div>
-          <div class="node node-action" style="min-width: 160px;">
+          <div class="node node-action" style="min-width: 180px;">
+            <span class="updated-badge">UPD</span>
             <div class="node-title">ESTIMATIONS</div>
-            <div class="node-desc">Planned allocations</div>
+            <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+              Per-member allocations<br>
+              e.g., "Fabian @ 50%"
+            </div>
           </div>
         </div>
 
@@ -1205,9 +1262,10 @@
           <div class="feature-card-title" style="color: #FFE81F;">DASHBOARD</div>
           <div class="feature-card-desc">Team utilization overview, capacity alerts, member workload summary. Effective FTE & capacity adjustments</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">GOALS</div>
-          <div class="feature-card-desc">OKR hierarchy: Goals > Key Results > Initiatives. Add/link/move initiatives, update progress, tracker URLs</div>
+          <div class="feature-card-desc">OKR hierarchy: Goals > Key Results > Initiatives. Add/link/move initiatives (incl. to BAU), update progress, tracker URLs</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
@@ -1219,9 +1277,10 @@
           <div class="feature-card-title" style="color: #FFE81F;">WEEKLY CHECK-IN</div>
           <div class="feature-card-desc">My Check-in, Team Overview, Analytics. Time allocation (up to 120%), mood, events auto-injected. Target-based progress (units/week)</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">ESTIMATION</div>
-          <div class="feature-card-desc">Quarter FTE planning. Initiative hours, KR estimates, generic BAU/Events estimates</div>
+          <div class="feature-card-desc">Quarter FTE planning. Per-member allocation (expandable rows), KR estimates, generic BAU/Events. Shows who @ what %</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
@@ -1233,9 +1292,10 @@
           <div class="feature-card-title" style="color: #FFE81F;">CAPACITY PLANNING</div>
           <div class="feature-card-desc">Resource allocation across time periods, availability calculations. Effective FTE & capacity adjustments</div>
         </div>
-        <div class="feature-card">
+        <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
+          <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">PMO EXPORT</div>
-          <div class="feature-card-desc">Export work done (from check-ins) or estimations as CSV/JSON with date range & filters</div>
+          <div class="feature-card-desc">Export work done (from check-ins) or estimations as CSV/JSON. Estimations now show per-member allocations (e.g., "Fabian @ 50%")</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>

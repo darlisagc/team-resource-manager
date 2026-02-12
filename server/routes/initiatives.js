@@ -20,6 +20,18 @@ function ensureOwnerAssignment(initiativeId, ownerId) {
   }
 }
 
+// Helper: Recalculate estimated_hours from assignment allocations
+function recalculateEstimatedHours(initiativeId, weeksInQuarter = 13) {
+  const assignments = getAll(
+    'SELECT allocation_percentage FROM initiative_assignments WHERE initiative_id = ?',
+    [initiativeId]
+  )
+  const totalPct = assignments.reduce((sum, a) => sum + (a.allocation_percentage || 0), 0)
+  const hours = Math.round(totalPct / 100 * 40 * weeksInQuarter)
+  update('initiatives', { estimated_hours: hours, updated_at: new Date().toISOString() }, 'id = ?', [initiativeId])
+  return hours
+}
+
 // Helper: Recalculate Key Result progress from its initiatives
 function recalculateKeyResultProgress(keyResultId) {
   const initiatives = getAll(
@@ -65,14 +77,16 @@ router.get('/', (req, res) => {
     SELECT
       i.*,
       kr.title as key_result_title,
-      g.title as goal_title,
-      g.quarter as goal_quarter,
+      COALESCE(g.title, pg.title) as goal_title,
+      COALESCE(g.quarter, pg.quarter) as goal_quarter,
       tm.name as owner_name,
       (SELECT COUNT(*) FROM initiative_assignments WHERE initiative_id = i.id) as assignment_count,
-      (SELECT COUNT(*) FROM weekly_allocations WHERE initiative_id = i.id) as allocation_count
+      (SELECT COUNT(*) FROM weekly_allocations WHERE initiative_id = i.id) as allocation_count,
+      (SELECT COALESCE(SUM(allocation_percentage), 0) FROM initiative_assignments WHERE initiative_id = i.id) as total_allocation_pct
     FROM initiatives i
     LEFT JOIN key_results kr ON i.key_result_id = kr.id
     LEFT JOIN goals g ON kr.goal_id = g.id
+    LEFT JOIN goals pg ON i.parent_goal_id = pg.id
     LEFT JOIN team_members tm ON i.owner_id = tm.id
     WHERE 1=1
   `
@@ -95,8 +109,9 @@ router.get('/', (req, res) => {
     params.push(key_result_id)
   }
   if (goal_id) {
-    sql += ' AND kr.goal_id = ?'
-    params.push(goal_id)
+    // Include initiatives linked via KR or directly via parent_goal_id
+    sql += ' AND (kr.goal_id = ? OR i.parent_goal_id = ?)'
+    params.push(goal_id, goal_id)
   }
   if (quarter) {
     sql += ' AND g.quarter = ?'
@@ -107,6 +122,56 @@ router.get('/', (req, res) => {
 
   const initiatives = getAll(sql, params)
   res.json(initiatives)
+})
+
+// =============== Batch Assignments (placed before /:id routes) ===============
+
+// Get assignments for multiple initiatives in a single query
+router.get('/assignments/batch', (req, res) => {
+  const { ids } = req.query
+  if (!ids) {
+    return res.status(400).json({ message: 'ids query parameter is required' })
+  }
+
+  const idList = ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+  if (idList.length === 0) {
+    return res.json({})
+  }
+
+  const placeholders = idList.map(() => '?').join(',')
+  const assignments = getAll(`
+    SELECT
+      ia.*,
+      tm.name as member_name,
+      tm.email as member_email,
+      tm.team as member_team,
+      tm.role as member_role,
+      tm.weekly_hours
+    FROM initiative_assignments ia
+    JOIN team_members tm ON ia.team_member_id = tm.id
+    WHERE ia.initiative_id IN (${placeholders})
+    ORDER BY
+      ia.initiative_id,
+      CASE ia.role
+        WHEN 'Lead' THEN 1
+        WHEN 'Contributor' THEN 2
+        WHEN 'Support' THEN 3
+      END,
+      tm.name
+  `, idList)
+
+  // Group assignments by initiative_id
+  const grouped = {}
+  idList.forEach(id => {
+    grouped[id] = []
+  })
+  assignments.forEach(a => {
+    if (grouped[a.initiative_id]) {
+      grouped[a.initiative_id].push(a)
+    }
+  })
+
+  res.json(grouped)
 })
 
 // =============== Time Tracking (placed before /:id routes) ===============
@@ -315,7 +380,7 @@ router.put('/:id', (req, res) => {
     return res.status(404).json({ message: 'Initiative not found' })
   }
 
-  const { name, description, key_result_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, current_value, comment, link, updated_by, tracker_url } = req.body
+  const { name, description, key_result_id, parent_goal_id, project_priority, team, status, owner_id, start_date, end_date, estimated_hours, current_value, comment, link, updated_by, tracker_url } = req.body
 
   // If status is changing and there's a comment/link, record the update
   if (status && status !== existing.status) {
@@ -339,6 +404,7 @@ router.put('/:id', (req, res) => {
     name: name !== undefined ? name : existing.name,
     description: description !== undefined ? description : existing.description,
     key_result_id: key_result_id !== undefined ? key_result_id : existing.key_result_id,
+    parent_goal_id: parent_goal_id !== undefined ? parent_goal_id : existing.parent_goal_id,
     project_priority: project_priority !== undefined ? project_priority : existing.project_priority,
     team: team !== undefined ? team : existing.team,
     status: status !== undefined ? status : existing.status,
@@ -368,10 +434,12 @@ router.put('/:id', (req, res) => {
   }
 
   const initiative = getOne(`
-    SELECT i.*, kr.title as key_result_title, g.title as goal_title
+    SELECT i.*, kr.title as key_result_title,
+      COALESCE(g.title, pg.title) as goal_title
     FROM initiatives i
     LEFT JOIN key_results kr ON i.key_result_id = kr.id
     LEFT JOIN goals g ON kr.goal_id = g.id
+    LEFT JOIN goals pg ON i.parent_goal_id = pg.id
     WHERE i.id = ?
   `, [req.params.id])
 
@@ -431,7 +499,7 @@ router.patch('/:id/progress', (req, res) => {
   res.json(initiative)
 })
 
-// Move initiative to a different quarter (PATCH)
+// Assign initiative to a quarter (PATCH)
 router.patch('/:id/quarter', (req, res) => {
   const existing = getOne('SELECT * FROM initiatives WHERE id = ?', [req.params.id])
   if (!existing) {
@@ -439,26 +507,11 @@ router.patch('/:id/quarter', (req, res) => {
   }
 
   const { quarter } = req.body
-  if (!quarter) {
-    return res.status(400).json({ message: 'Quarter is required' })
-  }
-
-  // Find the BAU key result for the target quarter
-  const bauKeyResult = getOne(`
-    SELECT kr.id
-    FROM key_results kr
-    JOIN goals g ON kr.goal_id = g.id
-    WHERE g.quarter = ? AND (g.title LIKE '%Business as Usual%' OR g.title = 'Backlog')
-    ORDER BY kr.id
-    LIMIT 1
-  `, [quarter])
-
-  if (!bauKeyResult) {
-    return res.status(404).json({ message: `No BAU goal found for quarter ${quarter}` })
-  }
+  // Allow empty/null to unassign
+  const assignedQuarter = quarter || null
 
   update('initiatives', {
-    key_result_id: bauKeyResult.id,
+    assigned_quarter: assignedQuarter,
     updated_at: new Date().toISOString()
   }, 'id = ?', [req.params.id])
 
@@ -544,10 +597,13 @@ router.post('/:id/assignments', (req, res) => {
     // Update existing assignment
     update('initiative_assignments', {
       role: role || 'Contributor',
-      allocation_percentage: allocation_percentage || null,
+      allocation_percentage: allocation_percentage !== undefined ? allocation_percentage : null,
       start_date: start_date || null,
       end_date: end_date || null
     }, 'id = ?', [existing.id])
+
+    // Recalculate estimated hours
+    const newEstimatedHours = recalculateEstimatedHours(req.params.id)
 
     const updated = getOne(`
       SELECT ia.*, tm.name as member_name
@@ -555,7 +611,7 @@ router.post('/:id/assignments', (req, res) => {
       JOIN team_members tm ON ia.team_member_id = tm.id
       WHERE ia.id = ?
     `, [existing.id])
-    return res.json(updated)
+    return res.json({ ...updated, initiative_estimated_hours: newEstimatedHours })
   }
 
   // Create new assignment
@@ -563,11 +619,14 @@ router.post('/:id/assignments', (req, res) => {
     initiative_id: req.params.id,
     team_member_id,
     role: role || 'Contributor',
-    allocation_percentage: allocation_percentage || null,
+    allocation_percentage: allocation_percentage !== undefined ? allocation_percentage : 0,
     start_date: start_date || null,
     end_date: end_date || null,
     source: 'manual'
   })
+
+  // Recalculate estimated hours
+  const newEstimatedHours = recalculateEstimatedHours(req.params.id)
 
   const newAssignment = getOne(`
     SELECT ia.*, tm.name as member_name
@@ -576,7 +635,7 @@ router.post('/:id/assignments', (req, res) => {
     WHERE ia.id = ?
   `, [result.lastInsertRowid])
 
-  res.status(201).json(newAssignment)
+  res.status(201).json({ ...newAssignment, initiative_estimated_hours: newEstimatedHours })
 })
 
 // Update assignment
@@ -599,6 +658,9 @@ router.put('/:id/assignments/:memberId', (req, res) => {
     end_date: end_date !== undefined ? end_date : existing.end_date
   }, 'id = ?', [existing.id])
 
+  // Recalculate estimated hours
+  const newEstimatedHours = recalculateEstimatedHours(req.params.id)
+
   const updated = getOne(`
     SELECT ia.*, tm.name as member_name
     FROM initiative_assignments ia
@@ -606,7 +668,7 @@ router.put('/:id/assignments/:memberId', (req, res) => {
     WHERE ia.id = ?
   `, [existing.id])
 
-  res.json(updated)
+  res.json({ ...updated, initiative_estimated_hours: newEstimatedHours })
 })
 
 // Remove assignment
@@ -621,7 +683,11 @@ router.delete('/:id/assignments/:memberId', (req, res) => {
   }
 
   deleteRow('initiative_assignments', 'id = ?', [existing.id])
-  res.json({ message: 'Assignment removed' })
+
+  // Recalculate estimated hours
+  const newEstimatedHours = recalculateEstimatedHours(req.params.id)
+
+  res.json({ message: 'Assignment removed', initiative_estimated_hours: newEstimatedHours })
 })
 
 // =============== Member's Initiatives ===============

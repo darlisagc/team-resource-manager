@@ -171,6 +171,8 @@ CREATE TABLE IF NOT EXISTS initiatives (
   estimated_hours REAL DEFAULT 0,
   actual_hours REAL DEFAULT 0,
   category TEXT CHECK(category IN ('Marketing', 'Business operation', 'BD - Enterprise Adoption', 'BD - Web3 Adoption', 'BD - Account management', 'Legal', 'Venture Hub', 'Academy', 'Ecosystem Support', 'Finances')),
+  fte_allocations TEXT DEFAULT NULL,
+  tracker_url TEXT DEFAULT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (key_result_id) REFERENCES key_results(id) ON DELETE SET NULL,

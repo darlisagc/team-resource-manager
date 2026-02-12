@@ -132,9 +132,30 @@ function migrateCurrentValueIncrement() {
   }
 }
 
+// Migration: Add assigned_quarter column to initiatives and key_results
+function migrateAssignedQuarter() {
+  try {
+    // Add to initiatives
+    const initInfo = db.prepare("PRAGMA table_info(initiatives)").all()
+    if (!initInfo.some(col => col.name === 'assigned_quarter')) {
+      db.exec("ALTER TABLE initiatives ADD COLUMN assigned_quarter TEXT DEFAULT NULL")
+      console.log('Migration: Added assigned_quarter column to initiatives')
+    }
+    // Add to key_results
+    const krInfo = db.prepare("PRAGMA table_info(key_results)").all()
+    if (!krInfo.some(col => col.name === 'assigned_quarter')) {
+      db.exec("ALTER TABLE key_results ADD COLUMN assigned_quarter TEXT DEFAULT NULL")
+      console.log('Migration: Added assigned_quarter column to key_results')
+    }
+  } catch (e) {
+    console.error('Migration assigned_quarter failed:', e.message)
+  }
+}
+
 // Initialize on import
 initializeDatabase()
 runMigrations()
 migrateCurrentValueIncrement()
+migrateAssignedQuarter()
 
 export default db

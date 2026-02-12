@@ -68,6 +68,9 @@ export default function GoalDetail() {
   const [eventsQuarterFilter, setEventsQuarterFilter] = useState('All')
   const [availableQuarters, setAvailableQuarters] = useState([])
 
+  // Goal-level initiatives (parent_goal_id set, but no key_result_id)
+  const [goalInitiatives, setGoalInitiatives] = useState([])
+
   // Hours tracking state
   const [hoursModal, setHoursModal] = useState(null) // { initiativeId, initiativeName, totalHours }
   const [timeEntries, setTimeEntries] = useState([])
@@ -79,6 +82,7 @@ export default function GoalDetail() {
       fetchGoalDetails()
       fetchKeyResults()
       fetchTeamMembers()
+      fetchGoalInitiatives()
     }
   }, [id])
 
@@ -124,6 +128,19 @@ export default function GoalDetail() {
     }
   }
 
+  // Fetch initiatives directly under this goal (no KR)
+  const fetchGoalInitiatives = async () => {
+    try {
+      const res = await fetch(`/api/initiatives?goal_id=${id}`, { headers: getAuthHeader() })
+      const data = await res.json()
+      // Filter to only those with parent_goal_id matching and no key_result_id
+      const directInitiatives = data.filter(i => i.parent_goal_id == id && !i.key_result_id)
+      setGoalInitiatives(directInitiatives)
+    } catch (error) {
+      console.error('Failed to fetch goal initiatives:', error)
+    }
+  }
+
   const fetchTeamMembers = async () => {
     try {
       const res = await fetch('/api/members', { headers: getAuthHeader() })
@@ -157,17 +174,25 @@ export default function GoalDetail() {
     }
   }
 
-  const moveInitiative = async (newKeyResultId) => {
-    if (!moveModal || !newKeyResultId) return
+  const moveInitiative = async (newKeyResultId, targetGoalId = null) => {
+    if (!moveModal) return
+    // Allow moving to BAU (null KR) or to a specific KR
+    if (!newKeyResultId && !targetGoalId) return
     setMovingInitiative(true)
     try {
+      const updateData = { key_result_id: newKeyResultId || null }
+      // If moving to BAU (no KR), also set parent_goal_id
+      if (!newKeyResultId && targetGoalId) {
+        updateData.parent_goal_id = targetGoalId
+      }
       const res = await fetch(`/api/initiatives/${moveModal.initiativeId}`, {
         method: 'PUT',
         headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key_result_id: newKeyResultId })
+        body: JSON.stringify(updateData)
       })
       if (res.ok) {
         fetchKeyResults()
+        fetchGoalInitiatives()
         setMoveModal(null)
       }
     } catch (error) {
@@ -1267,6 +1292,54 @@ export default function GoalDetail() {
         )}
       </div>
 
+      {/* Goal-level Initiatives (no KR assigned) */}
+      {goalInitiatives.length > 0 && (
+        <div className="hologram-card p-6 mt-6">
+          <h2 className="font-orbitron text-xl text-sw-gold mb-4">
+            Initiatives Without Key Result ({goalInitiatives.length})
+          </h2>
+          <p className="text-sw-gray text-sm mb-4">
+            These initiatives are assigned to this goal but not linked to any Key Result
+          </p>
+          <div className="space-y-3">
+            {goalInitiatives.map(init => (
+              <div key={init.id} className="flex items-center justify-between p-4 rounded-lg border border-sw-gray/30 bg-sw-darker/30 hover:border-sw-gold/30 transition-colors">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {init.project_priority && (
+                      <span className={`px-1.5 py-0.5 text-xs rounded ${
+                        init.project_priority === 'P1' ? 'bg-red-500/20 text-red-400' :
+                        init.project_priority === 'P2' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>{init.project_priority}</span>
+                    )}
+                    <span className="text-sw-light">{init.name}</span>
+                    <span className={`badge badge-${init.status === 'completed' ? 'success' : init.status === 'active' ? 'info' : 'warning'}`}>
+                      {init.status}
+                    </span>
+                  </div>
+                  {init.owner_name && (
+                    <p className="text-sw-gray text-xs mt-1">Owner: {init.owner_name}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Move button */}
+                  <button
+                    onClick={() => openMoveModal(init.id, init.name, init.key_result_id)}
+                    className="p-2 text-sw-gray hover:text-sw-purple transition-colors"
+                    title="Move to a Key Result"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 13l-5 5m0 0l-5-5m5 5V6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Update Modal */}
       {updateModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -1951,12 +2024,12 @@ export default function GoalDetail() {
               {allGoals.length === 0 ? (
                 <p className="text-sw-gray text-center py-4">Loading goals...</p>
               ) : (
-                allGoals
-                  .filter(g => g.title !== 'Business as Usual / Others') // Exclude BAU goal
-                  .map(g => (
-                    <div key={g.id} className="border border-sw-gray/30 rounded-lg overflow-hidden">
-                      <div className="p-3 bg-sw-darker/50">
-                        <p className="text-sw-gold font-orbitron text-sm">{g.title}</p>
+                allGoals.map(g => {
+                  const isBAU = g.title?.includes('Business as Usual')
+                  return (
+                    <div key={g.id} className={`border rounded-lg overflow-hidden ${isBAU ? 'border-sw-gold/50' : 'border-sw-gray/30'}`}>
+                      <div className={`p-3 ${isBAU ? 'bg-sw-gold/10' : 'bg-sw-darker/50'}`}>
+                        <p className={`font-orbitron text-sm ${isBAU ? 'text-sw-gold' : 'text-sw-gold'}`}>{g.title}</p>
                         <p className="text-sw-gray text-xs">{g.quarter}</p>
                       </div>
                       <div className="p-2 space-y-1">
@@ -1979,12 +2052,13 @@ export default function GoalDetail() {
                               )}
                             </button>
                           ))
-                        ) : (
+                        ) : !isBAU && (
                           <p className="text-sw-gray text-xs p-2">No key results</p>
                         )}
                       </div>
                     </div>
-                  ))
+                  )
+                })
               )}
             </div>
 

@@ -135,6 +135,7 @@ function generateFromEstimations(options) {
       i.team as initiative_team,
       ia.team_member_id,
       ia.role,
+      ia.allocation_percentage as assignment_allocation,
       tm.name as member_name,
       tm.team as member_team
     FROM initiatives i
@@ -182,6 +183,7 @@ function generateFromEstimations(options) {
   return initiativeMembers.map(im => {
     const key = `${im.initiative_id}-${im.team_member_id}`
     const weeklyData = allocationMap[key] || {}
+    const hasWeeklyAllocations = Object.keys(weeklyData).length > 0
 
     const row = {
       project_priority: im.project_priority || '',
@@ -192,8 +194,17 @@ function generateFromEstimations(options) {
       weekly: {}
     }
 
+    // If no weekly_allocations exist for this member/initiative,
+    // fall back to initiative_assignments.allocation_percentage spread evenly across all weeks
+    const flatAllocation = im.assignment_allocation || 0
+
     weeks.forEach(week => {
-      row.weekly[week] = weeklyData[week] || 0
+      if (hasWeeklyAllocations) {
+        row.weekly[week] = weeklyData[week] || 0
+      } else {
+        // Use the flat allocation from initiative_assignments for all weeks
+        row.weekly[week] = flatAllocation
+      }
     })
 
     return row
