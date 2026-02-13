@@ -192,27 +192,22 @@ The system automatically updates statuses based on actions:
 
 ### Data Flow Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                 INTERCONNECTED PAGES                     │
-│  (Share data from weekly_checkins table)                │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │
-│  │Dashboard │  │  Crew    │  │  Goals   │  │ Weekly   │ │
-│  │          │◄─┤  Roster  │◄─┤  Update  │◄─┤ Check-in │ │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │
-└─────────────────────────────────────────────────────────┘
+**INTERCONNECTED PAGES** (Share data from weekly_checkins table):
 
-┌─────────────────────────────────────────────────────────┐
-│                   SEPARATE SYSTEM                        │
-│  (Planning data only affects Export)                    │
-│                                                          │
-│  ┌──────────┐                          ┌──────────┐     │
-│  │ Planning │ ─────────────────────────► │  Export  │     │
-│  │ (FTE)    │    Estimations source    │          │     │
-│  └──────────┘                          └──────────┘     │
-└─────────────────────────────────────────────────────────┘
 ```
+Dashboard <-- Crew Roster <-- Goals Update <-- Weekly Check-in
+```
+
+All these pages read/write from the same data source (weekly_checkins table).
+
+**SEPARATE SYSTEM** (Planning data only affects Export):
+
+```
+Planning (FTE) ---------> Export
+              Estimations source
+```
+
+Planning page estimates are independent and only flow to the Export page.
 
 ---
 
@@ -265,30 +260,30 @@ The system automatically updates statuses based on actions:
 
 ```
 team-resource-manager/
-├── src/                      # Frontend source
-│   ├── components/           # React components
-│   │   ├── Dashboard/        # Command Center
-│   │   ├── Goals/            # OKR management
-│   │   ├── WeeklyCheckin/    # Check-in system
-│   │   ├── Initiatives/      # Planning page
-│   │   ├── TeamOverview/     # Crew Roster
-│   │   ├── Exports/          # PMO Export
-│   │   ├── Settings/         # Control Panel
-│   │   └── Layout/           # App shell, auth
-│   ├── constants/            # App constants, colors
-│   └── App.jsx               # Root component
-├── server/                   # Backend source
-│   ├── routes/               # API endpoints
-│   ├── services/             # Business logic
-│   │   └── backupService.js  # Backup/restore
-│   ├── middleware/           # Auth middleware
-│   ├── db/                   # Database setup
-│   └── index.js              # Express server
-├── public/                   # Static assets
-│   └── workflow-diagram.html # Documentation
-├── scripts/                  # Deployment scripts
-├── backups/                  # Database backups
-└── docs/                     # Documentation
+  src/                        # Frontend source
+    components/               # React components
+      Dashboard/              # Command Center
+      Goals/                  # OKR management
+      WeeklyCheckin/          # Check-in system
+      Initiatives/            # Planning page
+      TeamOverview/           # Crew Roster
+      Exports/                # PMO Export
+      Settings/               # Control Panel
+      Layout/                 # App shell, auth
+    constants/                # App constants, colors
+    App.jsx                   # Root component
+  server/                     # Backend source
+    routes/                   # API endpoints
+    services/                 # Business logic
+      backupService.js        # Backup/restore
+    middleware/               # Auth middleware
+    db/                       # Database setup
+    index.js                  # Express server
+  public/                     # Static assets
+    workflow-diagram.html     # Documentation
+  scripts/                    # Deployment scripts
+  backups/                    # Database backups
+  docs/                       # Documentation
 ```
 
 ## Security
@@ -317,43 +312,43 @@ team-resource-manager/
 
 ```
 goals
-├── id, title, description
-├── quarter, status, progress
-├── owner_id → team_members
-└── team, source
+  - id, title, description
+  - quarter, status, progress
+  - owner_id (FK: team_members)
+  - team, source
 
 key_results
-├── id, title, description
-├── goal_id → goals
-├── status, progress
-├── current_value, target_value
-└── owner_id → team_members
+  - id, title, description
+  - goal_id (FK: goals)
+  - status, progress
+  - current_value, target_value
+  - owner_id (FK: team_members)
 
 initiatives
-├── id, name, description
-├── key_result_id → key_results
-├── status, progress, priority
-├── estimated_hours, actual_hours
-├── owner_id → team_members
-└── tracker_url, category
+  - id, name, description
+  - key_result_id (FK: key_results)
+  - status, progress, priority
+  - estimated_hours, actual_hours
+  - owner_id (FK: team_members)
+  - tracker_url, category
 
 team_members
-├── id, name, email
-├── role, team, country
-└── weekly_hours, effective_fte
+  - id, name, email
+  - role, team, country
+  - weekly_hours, effective_fte
 
 weekly_checkins
-├── id, team_member_id
-├── week_start, status
-├── total_allocation_pct
-└── mood_score, notes
+  - id, team_member_id
+  - week_start, status
+  - total_allocation_pct
+  - mood_score, notes
 
 weekly_checkin_items
-├── id, checkin_id
-├── initiative_id / key_result_id
-├── time_allocation_pct
-├── progress_value, notes
-└── is_event
+  - id, checkin_id
+  - initiative_id / key_result_id
+  - time_allocation_pct
+  - progress_value, notes
+  - is_event
 ```
 
 ### Status Values
