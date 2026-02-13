@@ -23,6 +23,37 @@ function getWeeksBetween(startDate, endDate) {
   return weeks
 }
 
+// Helper: Get date range for a quarter (e.g., "Q1 2026" -> {start: "2026-01-01", end: "2026-03-31"})
+function getQuarterDateRange(quarterStr) {
+  if (!quarterStr) return null
+
+  const match = quarterStr.match(/Q(\d)\s+(\d{4})/)
+  if (!match) return null
+
+  const quarterNum = parseInt(match[1])
+  const year = match[2]
+  const startMonth = (quarterNum - 1) * 3 + 1
+  const endMonth = startMonth + 2
+  const endDay = [1, 3, 5, 7, 8, 10, 12].includes(endMonth) ? 31 : 30
+
+  return {
+    start: `${year}-${String(startMonth).padStart(2, '0')}-01`,
+    end: `${year}-${String(endMonth).padStart(2, '0')}-${endDay}`
+  }
+}
+
+// Helper: Check if a week falls within a quarter
+function isWeekInQuarter(weekDate, quarterStr) {
+  const range = getQuarterDateRange(quarterStr)
+  if (!range) return true // If no quarter assigned, show in all weeks
+
+  const week = new Date(weekDate)
+  const start = new Date(range.start)
+  const end = new Date(range.end)
+
+  return week >= start && week <= end
+}
+
 // Helper: Format date for display (e.g., "02/06")
 function formatWeekLabel(dateStr) {
   const d = new Date(dateStr)
@@ -133,6 +164,7 @@ function generateFromEstimations(options) {
       i.name as initiative_name,
       i.project_priority,
       i.team as initiative_team,
+      i.assigned_quarter,
       ia.team_member_id,
       ia.role,
       ia.allocation_percentage as assignment_allocation,
@@ -195,15 +227,21 @@ function generateFromEstimations(options) {
     }
 
     // If no weekly_allocations exist for this member/initiative,
-    // fall back to initiative_assignments.allocation_percentage spread evenly across all weeks
+    // fall back to initiative_assignments.allocation_percentage
+    // BUT only for weeks within the initiative's assigned_quarter
     const flatAllocation = im.assignment_allocation || 0
+    const assignedQuarter = im.assigned_quarter
 
     weeks.forEach(week => {
       if (hasWeeklyAllocations) {
         row.weekly[week] = weeklyData[week] || 0
       } else {
-        // Use the flat allocation from initiative_assignments for all weeks
-        row.weekly[week] = flatAllocation
+        // Only show allocation for weeks within the assigned quarter
+        if (isWeekInQuarter(week, assignedQuarter)) {
+          row.weekly[week] = flatAllocation
+        } else {
+          row.weekly[week] = 0
+        }
       }
     })
 

@@ -475,7 +475,7 @@ export default function GoalDetail() {
           category: newInitiative.category || null,
           actual_hours: newInitiative.hours || 0,
           progress: newInitiative.progress || 0,
-          tracker_url: newInitiative.trackerUrl.trim() || null,
+          tracker_url: newInitiative.trackerUrl?.trim() || null,
           status: 'active',
           source: 'manual'
         })
@@ -717,7 +717,17 @@ export default function GoalDetail() {
         </div>
         <div className="hologram-card p-4">
           <p className="text-sw-gray text-xs uppercase tracking-wider">Progress</p>
-          <p className="text-sw-gold text-lg font-orbitron mt-1">{goal.progress}%</p>
+          <p className="text-sw-gold text-lg font-orbitron mt-1">
+            {goal.title?.includes('Business as Usual') || goal.title?.includes('Events') ? (
+              <>{goal.progress || 0}%</>
+            ) : (
+              <>
+                {keyResults.filter(kr => kr.status === 'completed' || kr.progress >= 100).length}
+                <span className="text-sw-gray">/</span>
+                {keyResults.length}
+              </>
+            )}
+          </p>
         </div>
         {/* Total Hours for BAU goals */}
         {isManualAddAllowed && (
@@ -827,42 +837,47 @@ export default function GoalDetail() {
                             </span>
                           </div>
                         )}
-                        {/* Editable progress */}
-                        {editingKRProgress?.id === kr.id ? (
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={editingKRProgress.progress}
-                            onChange={(e) => setEditingKRProgress({ id: kr.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
-                            onBlur={() => updateKRProgress(kr.id, editingKRProgress.progress)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') updateKRProgress(kr.id, editingKRProgress.progress)
-                              if (e.key === 'Escape') setEditingKRProgress(null)
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-16 px-2 py-1 bg-sw-darker border border-sw-gold rounded text-sw-gold text-lg font-orbitron text-center focus:outline-none"
-                            autoFocus
-                          />
+                        {/* Target-based progress (Leapsome style) */}
+                        {kr.target_value > 0 ? (
+                          <span className="text-sw-gold font-orbitron text-lg">
+                            {kr.current_value || 0}/{kr.target_value}
+                          </span>
                         ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditingKRProgress({ id: kr.id, progress: kr.progress || 0 }) }}
-                            className="text-sw-gold font-orbitron text-lg hover:bg-sw-gold/20 px-2 py-1 rounded transition-colors"
-                            title="Click to edit progress"
-                          >
-                            {kr.progress || 0}%
-                          </button>
+                          <>
+                            {editingKRProgress?.id === kr.id ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={editingKRProgress.progress}
+                                onChange={(e) => setEditingKRProgress({ id: kr.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                                onBlur={() => updateKRProgress(kr.id, editingKRProgress.progress)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') updateKRProgress(kr.id, editingKRProgress.progress)
+                                  if (e.key === 'Escape') setEditingKRProgress(null)
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-16 px-2 py-1 bg-sw-darker border border-sw-gold rounded text-sw-gold text-lg font-orbitron text-center focus:outline-none"
+                                autoFocus
+                              />
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditingKRProgress({ id: kr.id, progress: kr.progress || 0 }) }}
+                                className="text-sw-gold font-orbitron text-lg hover:bg-sw-gold/20 px-2 py-1 rounded transition-colors"
+                                title="Click to edit progress"
+                              >
+                                {kr.progress || 0}%
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                       <div className="w-32 h-2 bg-sw-darker rounded-full mt-2 overflow-hidden ml-auto">
                         <div
-                          className={`h-full ${getProgressColor(kr.progress || 0, 100)} transition-all`}
-                          style={{ width: `${kr.progress || 0}%` }}
+                          className={`h-full ${getProgressColor(kr.target_value > 0 ? ((kr.current_value || 0) / kr.target_value) * 100 : (kr.progress || 0), 100)} transition-all`}
+                          style={{ width: `${kr.target_value > 0 ? Math.min(((kr.current_value || 0) / kr.target_value) * 100, 100) : (kr.progress || 0)}%` }}
                         />
                       </div>
-                      {(kr.target_value > 0) && (
-                        <p className="text-sw-gray text-xs mt-1">{kr.current_value || 0} / {kr.target_value}</p>
-                      )}
                     </div>
                   </div>
 
@@ -1004,36 +1019,52 @@ export default function GoalDetail() {
                                                 </svg>
                                                 {init.actual_hours || 0}h
                                               </button>
-                                              {/* Progress bar and % */}
-                                              <div className="w-16 h-1.5 bg-sw-darker rounded-full overflow-hidden">
-                                                <div
-                                                  className="h-full bg-sw-blue transition-all"
-                                                  style={{ width: `${init.progress || 0}%` }}
-                                                />
-                                              </div>
-                                              {editingProgress?.id === init.id ? (
-                                                <input
-                                                  type="number"
-                                                  min="0"
-                                                  max="100"
-                                                  value={editingProgress.progress}
-                                                  onChange={(e) => setEditingProgress({ id: init.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
-                                                  onBlur={() => updateInitiativeProgress(init.id, editingProgress.progress)}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') updateInitiativeProgress(init.id, editingProgress.progress)
-                                                    if (e.key === 'Escape') setEditingProgress(null)
-                                                  }}
-                                                  className="w-14 px-1 py-0.5 bg-sw-darker border border-sw-blue rounded text-sw-blue text-xs font-orbitron text-center focus:outline-none"
-                                                  autoFocus
-                                                />
+                                              {/* Progress - target-based or percentage */}
+                                              {init.target_value > 0 ? (
+                                                <>
+                                                  <div className="w-16 h-1.5 bg-sw-darker rounded-full overflow-hidden">
+                                                    <div
+                                                      className={`h-full transition-all ${(init.current_value || 0) >= init.target_value ? 'bg-sw-green' : 'bg-sw-purple'}`}
+                                                      style={{ width: `${Math.min(((init.current_value || 0) / init.target_value) * 100, 100)}%` }}
+                                                    />
+                                                  </div>
+                                                  <span className={`text-xs font-orbitron ${(init.current_value || 0) >= init.target_value ? 'text-sw-green' : 'text-sw-purple'}`}>
+                                                    {init.current_value || 0}/{init.target_value}
+                                                  </span>
+                                                </>
                                               ) : (
-                                                <button
-                                                  onClick={() => setEditingProgress({ id: init.id, progress: init.progress || 0 })}
-                                                  className="text-sw-blue text-xs font-orbitron hover:bg-sw-blue/20 px-1 py-0.5 rounded transition-colors"
-                                                  title="Click to edit progress"
-                                                >
-                                                  {init.progress || 0}%
-                                                </button>
+                                                <>
+                                                  <div className="w-16 h-1.5 bg-sw-darker rounded-full overflow-hidden">
+                                                    <div
+                                                      className="h-full bg-sw-blue transition-all"
+                                                      style={{ width: `${init.progress || 0}%` }}
+                                                    />
+                                                  </div>
+                                                  {editingProgress?.id === init.id ? (
+                                                    <input
+                                                      type="number"
+                                                      min="0"
+                                                      max="100"
+                                                      value={editingProgress.progress}
+                                                      onChange={(e) => setEditingProgress({ id: init.id, progress: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                                                      onBlur={() => updateInitiativeProgress(init.id, editingProgress.progress)}
+                                                      onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') updateInitiativeProgress(init.id, editingProgress.progress)
+                                                        if (e.key === 'Escape') setEditingProgress(null)
+                                                      }}
+                                                      className="w-14 px-1 py-0.5 bg-sw-darker border border-sw-blue rounded text-sw-blue text-xs font-orbitron text-center focus:outline-none"
+                                                      autoFocus
+                                                    />
+                                                  ) : (
+                                                    <button
+                                                      onClick={() => setEditingProgress({ id: init.id, progress: init.progress || 0 })}
+                                                      className="text-sw-blue text-xs font-orbitron hover:bg-sw-blue/20 px-1 py-0.5 rounded transition-colors"
+                                                      title="Click to edit progress"
+                                                    >
+                                                      {init.progress || 0}%
+                                                    </button>
+                                                  )}
+                                                </>
                                               )}
                                             </div>
                                           </div>

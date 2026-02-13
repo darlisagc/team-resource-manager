@@ -58,7 +58,8 @@ router.get('/summary', (req, res) => {
   // Parse quarter to get date range (using centralized utility)
   const { startDate, endDate } = getQuarterDateRange(quarter)
 
-  // Get time-off that overlaps with the quarter
+  // Get allocation summary from weekly check-ins (actual work reported)
+  // NOT from planning/initiative_assignments - those are separate
   const summary = getAll(`
     SELECT
       tm.id,
@@ -66,28 +67,36 @@ router.get('/summary', (req, res) => {
       tm.role,
       tm.team,
       tm.weekly_hours,
-      COALESCE(SUM(a.allocation_percentage), 0) as total_allocation,
+      COALESCE((SELECT SUM(total_allocation_pct)
+                FROM weekly_checkins
+                WHERE team_member_id = tm.id
+                AND status = 'submitted'
+                AND week_start >= ? AND week_start <= ?), 0) as checkin_allocation_sum,
+      COALESCE((SELECT COUNT(*)
+                FROM weekly_checkins
+                WHERE team_member_id = tm.id
+                AND status = 'submitted'
+                AND week_start >= ? AND week_start <= ?), 0) as weeks_reported,
       COALESCE((SELECT SUM(hours) FROM time_off
                 WHERE team_member_id = tm.id
                 AND start_date <= ? AND end_date >= ?), 0) as time_off_hours,
       COALESCE((SELECT SUM(hours) FROM time_off
                 WHERE team_member_id = tm.id
                 AND type = 'other'
-                AND start_date <= ? AND end_date >= ?), 0) as capacity_adjustment_hours,
-      COUNT(DISTINCT a.goal_id) as goal_count,
-      COUNT(DISTINCT a.task_id) as task_count
+                AND start_date <= ? AND end_date >= ?), 0) as capacity_adjustment_hours
     FROM team_members tm
-    LEFT JOIN allocations a ON tm.id = a.team_member_id
-      AND a.start_date <= ? AND a.end_date >= ?
     GROUP BY tm.id
     ORDER BY tm.name
-  `, [endDate, startDate, endDate, startDate, endDate, startDate])
+  `, [startDate, endDate, startDate, endDate, endDate, startDate, endDate, startDate])
 
   // Calculate utilization for each member (using centralized constant)
   const weeksInQuarter = WEEKS_PER_QUARTER
   const summaryWithUtilization = summary.map(member => {
     const totalCapacity = member.weekly_hours * weeksInQuarter
-    const taskAllocatedHours = (member.total_allocation / 100) * totalCapacity
+    // Calculate allocated hours from weekly check-ins
+    // Each check-in week's total_allocation_pct * weekly_hours = hours worked that week
+    const checkinAllocSum = member.checkin_allocation_sum || 0
+    const taskAllocatedHours = (checkinAllocSum / 100) * member.weekly_hours
     // PTO counts as allocated time (can't assign work during PTO)
     const allocatedHours = taskAllocatedHours + member.time_off_hours
     const availableHours = totalCapacity - member.time_off_hours
@@ -102,10 +111,12 @@ router.get('/summary', (req, res) => {
 
     return {
       ...member,
+      checkin_allocation_pct: checkinAllocSum,
+      weeks_reported: member.weeks_reported,
       totalCapacity,
       availableHours,
-      allocatedHours,
-      taskAllocatedHours,
+      allocatedHours: Math.round(taskAllocatedHours),
+      taskAllocatedHours: Math.round(taskAllocatedHours),
       utilization: Math.round(utilization * 10) / 10,
       fte: member.weekly_hours / 40,
       effective_weekly_hours: Math.round(effectiveWeeklyHours * 10) / 10,

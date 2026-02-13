@@ -6,7 +6,7 @@ const navItems = [
   { path: '/team', label: 'Crew Roster', icon: '⚔' },
   { path: '/goals', label: 'Goals Update', icon: '◈' },
   { path: '/weekly-checkin', label: 'Weekly Check-in', icon: '✓' },
-  { path: '/estimation', label: 'Quarter Estimation', icon: '◆' },
+  { path: '/planning', label: 'Planning', icon: '◆' },
   { path: '/exports', label: 'Export', icon: '⬡' },
   { path: '/settings', label: 'Control Panel', icon: '⚙', adminOnly: true },
 ]

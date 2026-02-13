@@ -609,7 +609,7 @@ export default function Initiatives() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-orbitron text-2xl text-sw-gold">Quarter Estimation</h1>
+          <h1 className="font-orbitron text-2xl text-sw-gold">Planning</h1>
           <p className="text-sw-gray text-sm">Forecast effort needed for each initiative</p>
         </div>
         <select

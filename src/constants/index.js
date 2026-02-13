@@ -59,9 +59,10 @@ export const STATUS_OPTIONS = [
 export const COLORS = {
   green: '#00FF00',
   gold: '#FF6B35',
-  red: '#FF2D2D',
-  blue: '#4BD5EE',
-  purple: '#9D4EDD',
+  red: '#FF6B6B',      // Coral red for time off
+  blue: '#4BD5EE',     // Cyan for work allocation
+  purple: '#A855F7',   // Vibrant purple for events
+  orange: '#F97316',   // Orange alternative
   gray: '#6B7280'
 }
 

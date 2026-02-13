@@ -43,19 +43,56 @@ const MOOD_SCORES = {
   '🔥': 4, '😊': 3, '😐': 2, '🤔': 1
 }
 
-// Star Wars themed force levels for mood scores
+// Star Wars gaming-style force levels
 const FORCE_LEVELS = [
-  { min: 3.5, label: 'FORCE MASTER', color: 'text-green-400', bg: 'bg-green-500', quote: 'Do. Or do not. There is no try.', icon: '⚡' },
-  { min: 2.5, label: 'JEDI KNIGHT', color: 'text-sw-blue', bg: 'bg-blue-500', quote: 'The Force will be with you. Always.', icon: '🗡' },
-  { min: 1.5, label: 'PADAWAN', color: 'text-yellow-400', bg: 'bg-yellow-500', quote: 'Much to learn, you still have.', icon: '📚' },
-  { min: 0, label: 'DARK SIDE', color: 'text-red-400', bg: 'bg-red-500', quote: 'I find your lack of faith disturbing.', icon: '💀' },
+  { min: 3.5, label: 'GRANDMASTER', color: 'text-green-400', bg: 'bg-green-500', quote: 'This is the way.', icon: '⚔️' },
+  { min: 2.5, label: 'JEDI MASTER', color: 'text-sw-blue', bg: 'bg-blue-500', quote: 'The Force is strong with this team.', icon: '🗡️' },
+  { min: 1.5, label: 'JEDI KNIGHT', color: 'text-yellow-400', bg: 'bg-yellow-500', quote: 'Trust in the Force.', icon: '✨' },
+  { min: 0, label: 'PADAWAN', color: 'text-red-400', bg: 'bg-red-500', quote: 'Much to learn, we still have.', icon: '📖' },
 ]
 
 const MOOD_RANKS = {
-  '🔥': { rank: 'Force Master', desc: 'Wielding unlimited power', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/50' },
-  '😊': { rank: 'Jedi Knight', desc: 'One with the Force', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/50' },
-  '😐': { rank: 'Padawan', desc: 'Training in progress', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/50' },
-  '🤔': { rank: 'Youngling', desc: 'Disturbance in the Force', color: 'from-red-500/20 to-red-500/5', border: 'border-red-500/50' },
+  '🔥': { rank: 'LEGENDARY', desc: '+500 XP • Max Power', color: 'from-green-500/20 to-green-500/5', border: 'border-green-500/50' },
+  '😊': { rank: 'EPIC', desc: '+300 XP • Strong', color: 'from-blue-500/20 to-blue-500/5', border: 'border-blue-500/50' },
+  '😐': { rank: 'RARE', desc: '+100 XP • Steady', color: 'from-yellow-500/20 to-yellow-500/5', border: 'border-yellow-500/50' },
+  '🤔': { rank: 'COMMON', desc: '+50 XP • Charging', color: 'from-red-500/20 to-red-500/5', border: 'border-red-500/50' },
+}
+
+// Star Wars icons for analytics page (lightsabers)
+const StarWarsIcon = ({ mood, size = 40 }) => {
+  const colors = {
+    '🔥': { blade: '#00ff00', glow: '#00ff0080' }, // Green - Yoda/Luke
+    '😊': { blade: '#00bfff', glow: '#00bfff80' }, // Blue - Obi-Wan
+    '😐': { blade: '#ffd700', glow: '#ffd70080' }, // Yellow - Temple Guard
+    '🤔': { blade: '#ff0000', glow: '#ff000080' }, // Red - Sith
+  }
+  const { blade, glow } = colors[mood] || colors['😊']
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" className="drop-shadow-lg">
+      {/* Glow effect */}
+      <defs>
+        <filter id={`glow-${mood}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Lightsaber blade */}
+      <rect x="45" y="10" width="10" height="50" rx="5" fill={blade} filter={`url(#glow-${mood})`} />
+      <rect x="46" y="12" width="8" height="46" rx="4" fill="white" opacity="0.5" />
+      {/* Handle */}
+      <rect x="42" y="60" width="16" height="30" rx="2" fill="#444" />
+      <rect x="44" y="62" width="12" height="4" rx="1" fill="#666" />
+      <rect x="44" y="68" width="12" height="4" rx="1" fill="#666" />
+      <rect x="44" y="74" width="12" height="4" rx="1" fill="#666" />
+      <circle cx="50" cy="82" r="3" fill="#222" />
+      {/* Button */}
+      <rect x="56" y="65" width="4" height="6" rx="1" fill={blade} />
+    </svg>
+  )
 }
 
 function getForceLevel(score) {
@@ -879,9 +916,9 @@ export default function WeeklyCheckin() {
               )}
             </div>
 
-            {/* Galactic Morale Index */}
+            {/* Force Index */}
             <div className="hologram-card p-6">
-              <h2 className="font-orbitron text-sw-gold text-lg mb-2">Galactic Morale Index</h2>
+              <h2 className="font-orbitron text-sw-gold text-lg mb-2">Force Index</h2>
               <p className="text-sw-gray text-xs mb-6">Measuring the Force within the team</p>
 
               {analyticsData?.moodTrends?.length > 0 ? (
@@ -899,7 +936,7 @@ export default function WeeklyCheckin() {
                             <circle cx="50" cy="50" r="42" fill="none" stroke="#1a1a2e" strokeWidth="8" />
                             <circle
                               cx="50" cy="50" r="42" fill="none"
-                              stroke={level.label === 'FORCE MASTER' ? '#4ade80' : level.label === 'JEDI KNIGHT' ? '#4BD5EE' : level.label === 'PADAWAN' ? '#facc15' : '#f87171'}
+                              stroke={level.label === 'GRANDMASTER' ? '#4ade80' : level.label === 'JEDI MASTER' ? '#4BD5EE' : level.label === 'JEDI KNIGHT' ? '#facc15' : '#f87171'}
                               strokeWidth="8"
                               strokeLinecap="round"
                               strokeDasharray={`${pct * 2.64} 264`}
@@ -930,7 +967,9 @@ export default function WeeklyCheckin() {
                       const rank = MOOD_RANKS[mood.emoji]
                       return (
                         <div key={mood.emoji} className={`p-3 rounded-lg border ${rank.border} bg-gradient-to-b ${rank.color} text-center`}>
-                          <span className="text-3xl block mb-1">{mood.emoji}</span>
+                          <div className="flex justify-center mb-1">
+                            <StarWarsIcon mood={mood.emoji} size={48} />
+                          </div>
                           <span className="font-orbitron text-sw-light text-lg block">{totalMood}</span>
                           <span className="text-sw-gray text-xs block">{pct}% of votes</span>
                           <span className="font-orbitron text-xs block mt-2 text-sw-light/80">{rank.rank}</span>
@@ -958,10 +997,10 @@ export default function WeeklyCheckin() {
                           ticks={[1, 2, 3, 4]}
                           tick={{ fill: '#9ca3af', fontSize: 10 }}
                           tickFormatter={(v) => {
-                            if (v === 4) return '⚡ Master'
-                            if (v === 3) return '🗡 Knight'
-                            if (v === 2) return '📚 Padawan'
-                            if (v === 1) return '💀 Dark Side'
+                            if (v === 4) return '⚔️ GRANDMASTER'
+                            if (v === 3) return '🗡️ JEDI MASTER'
+                            if (v === 2) return '✨ JEDI KNIGHT'
+                            if (v === 1) return '📖 PADAWAN'
                             return ''
                           }}
                         />
@@ -983,7 +1022,7 @@ export default function WeeklyCheckin() {
                           strokeWidth={3}
                           dot={(props) => {
                             const level = getForceLevel(props.payload.avgScore)
-                            const fill = level.label === 'FORCE MASTER' ? '#4ade80' : level.label === 'JEDI KNIGHT' ? '#4BD5EE' : level.label === 'PADAWAN' ? '#facc15' : '#f87171'
+                            const fill = level.label === 'GRANDMASTER' ? '#4ade80' : level.label === 'JEDI MASTER' ? '#4BD5EE' : level.label === 'JEDI KNIGHT' ? '#facc15' : '#f87171'
                             return <circle key={`dot-${props.index}`} cx={props.cx} cy={props.cy} r={6} fill={fill} stroke="#1a1a2e" strokeWidth={2} />
                           }}
                           activeDot={{ r: 8, stroke: '#FF6B35', strokeWidth: 2 }}
@@ -1036,7 +1075,7 @@ export default function WeeklyCheckin() {
                   <span className="text-6xl block mb-4">🔮</span>
                   <p className="text-sw-gray font-orbitron text-sm">The Force is silent...</p>
                   <p className="text-sw-gray/50 text-xs mt-2">No mood data available for {analyticsQuarter}.</p>
-                  <p className="text-sw-gray/50 text-xs">Submit weekly check-ins with moods to awaken the Galactic Morale Index.</p>
+                  <p className="text-sw-gray/50 text-xs">Submit weekly check-ins with moods to awaken the Force Index.</p>
                 </div>
               )}
             </div>

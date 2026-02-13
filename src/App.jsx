@@ -64,7 +64,7 @@ function App() {
         <Route path="tasks" element={<Tasks />} />
         <Route path="weekly-review" element={<WeeklyReview />} />
         <Route path="capacity" element={<CapacityPlanning />} />
-        <Route path="estimation" element={<Initiatives />} />
+        <Route path="planning" element={<Initiatives />} />
         <Route path="weekly-input" element={<WeeklyInput />} />
         <Route path="weekly-checkin" element={<WeeklyCheckin />} />
         <Route path="exports" element={<PMOExport />} />

@@ -709,14 +709,15 @@
 
           <div class="arrow">→</div>
 
-          <div class="node node-page" style="min-width: 180px;">
-            <span class="new-badge">NEW</span>
+          <div class="node node-page" style="min-width: 200px;">
+            <span class="updated-badge">UPD</span>
             <span class="time-badge">2m</span>
             <div class="node-title">DASHBOARD</div>
             <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
-              Check utilization<br>
-              Effective FTE display<br>
-              Capacity adjustments
+              Multicolor stacked bars<br>
+              <span style="color:#FF6B6B">■</span> Time Off <span style="color:#A855F7">■</span> Events <span style="color:#4BD5EE">■</span> Work<br>
+              Data from weekly check-ins<br>
+              Orange user names
             </div>
           </div>
 
@@ -852,13 +853,14 @@
 
         <div class="arrow">→</div>
 
-        <div class="node node-action" style="min-width: 160px;">
-          <div class="node-title">SET MOOD</div>
+        <div class="node node-action" style="min-width: 180px;">
+          <span class="updated-badge">UPD</span>
+          <div class="node-title">SET FORCE LEVEL</div>
           <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
-            On Fire (4)<br>
-            Good (3)<br>
-            Neutral (2)<br>
-            Blocked (1)
+            ⚔️ GRANDMASTER (4)<br>
+            🗡️ JEDI MASTER (3)<br>
+            ✨ JEDI KNIGHT (2)<br>
+            🌑 PADAWAN (1)
           </div>
         </div>
 
@@ -867,6 +869,18 @@
         <div class="node node-action">
           <div class="node-title">SUBMIT</div>
           <div class="node-desc">Save check-in</div>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="node node-new" style="min-width: 180px;">
+          <span class="new-badge">NEW</span>
+          <div class="node-title">AUTO-STATUS</div>
+          <div class="node-desc" style="text-align: left; font-size: 0.6rem;">
+            Hours logged → active<br>
+            moves to in-progress<br>
+            (Initiative + KR)
+          </div>
         </div>
 
         <div class="arrow">→</div>
@@ -900,11 +914,12 @@
           </div>
 
           <div class="node node-page" style="min-width: 180px;">
+            <span class="updated-badge">UPD</span>
             <div class="node-title">ANALYTICS</div>
             <div class="node-desc" style="text-align: left; margin-top: 8px; font-size: 0.6rem;">
               Goal progress bar chart<br>
-              Team satisfaction trends<br>
-              Mood score over time<br>
+              Force Index trends<br>
+              Star Wars rank labels<br>
               Quarter selector
             </div>
           </div>
@@ -1246,13 +1261,79 @@
         <br>
         <span style="color: #E91E63; font-family: 'Orbitron', sans-serif; font-size: 0.7rem;">NEW: </span>
         <span style="color: #4BD5EE;">Initiatives & KRs auto-complete when reaching 100% progress</span>
+        <br>
+        <span style="color: #E91E63; font-family: 'Orbitron', sans-serif; font-size: 0.7rem;">NEW: </span>
+        <span style="color: #4BD5EE;">Auto-status: active → in-progress when hours logged via check-in</span>
+      </div>
+    </div>
+
+    <!-- DATA ARCHITECTURE -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon">9</div>
+        DATA ARCHITECTURE
+        <span class="freq-badge">How Data Flows</span>
+      </div>
+
+      <div style="display: flex; gap: 30px; justify-content: center; flex-wrap: wrap;">
+        <!-- Interconnected Pages -->
+        <div style="border: 2px solid #4BD5EE; border-radius: 15px; padding: 20px; background: rgba(75, 213, 238, 0.05); min-width: 320px;">
+          <p style="color: #4BD5EE; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; margin-bottom: 15px; text-align: center;">
+            <span class="new-badge" style="margin-right: 8px;">LINKED</span>
+            INTERCONNECTED PAGES
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="node node-page" style="min-width: auto;">
+              <div class="node-title">DASHBOARD</div>
+              <div class="node-desc">Reads from weekly_checkins</div>
+            </div>
+            <div class="node node-page" style="min-width: auto;">
+              <div class="node-title">CREW ROSTER</div>
+              <div class="node-desc">Team assignments</div>
+            </div>
+            <div class="node node-page" style="min-width: auto;">
+              <div class="node-title">GOALS</div>
+              <div class="node-desc">OKR progress</div>
+            </div>
+            <div class="node node-page" style="min-width: auto;">
+              <div class="node-title">WEEKLY CHECK-IN</div>
+              <div class="node-desc">Source of truth for hours</div>
+            </div>
+          </div>
+          <p style="color: #4BD5EE; font-size: 0.65rem; text-align: center; margin-top: 15px;">
+            All share the same data source<br>
+            Changes sync across all pages
+          </p>
+        </div>
+
+        <!-- Separate: Planning -->
+        <div style="border: 2px dashed #FFE81F; border-radius: 15px; padding: 20px; background: rgba(255, 232, 31, 0.05); min-width: 280px;">
+          <p style="color: #FFE81F; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; margin-bottom: 15px; text-align: center;">
+            SEPARATE SYSTEM
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="node node-decision" style="min-width: auto;">
+              <div class="node-title">PLANNING</div>
+              <div class="node-desc">FTE estimates only</div>
+            </div>
+            <div class="arrow arrow-down" style="transform: rotate(90deg); margin: 5px auto;">↓</div>
+            <div class="node node-action" style="min-width: auto; border-color: #FFE81F;">
+              <div class="node-title" style="color: #FFE81F;">EXPORT</div>
+              <div class="node-desc">Estimations source</div>
+            </div>
+          </div>
+          <p style="color: #FFE81F; font-size: 0.65rem; text-align: center; margin-top: 15px;">
+            Planning data does NOT affect<br>
+            Dashboard, Goals, or Check-ins
+          </p>
+        </div>
       </div>
     </div>
 
     <!-- APP PAGES OVERVIEW -->
     <div class="section">
       <div class="section-header">
-        <div class="section-icon">9</div>
+        <div class="section-icon">10</div>
         APP PAGES OVERVIEW
       </div>
 
@@ -1260,7 +1341,7 @@
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">DASHBOARD</div>
-          <div class="feature-card-desc">Team utilization overview, capacity alerts, member workload summary. Effective FTE & capacity adjustments</div>
+          <div class="feature-card-desc">Multicolor stacked bars (<span style="color:#FF6B6B">Time Off</span> + <span style="color:#A855F7">Events</span> + <span style="color:#4BD5EE">Work</span>). Data from weekly check-ins. Orange user names (#FF6B35)</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
@@ -1275,7 +1356,7 @@
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>
           <div class="feature-card-title" style="color: #FFE81F;">WEEKLY CHECK-IN</div>
-          <div class="feature-card-desc">My Check-in, Team Overview, Analytics. Time allocation (up to 120%), mood, events auto-injected. Target-based progress (units/week)</div>
+          <div class="feature-card-desc">Force Index (⚔️GRANDMASTER → 🌑PADAWAN). Auto-status: hours → in-progress. Time allocation (120%), events auto-injected. Feeds Dashboard data</div>
         </div>
         <div class="feature-card" style="border-color: rgba(233, 30, 99, 0.3);">
           <span style="color: #E91E63; font-size: 0.55rem; font-weight: bold;">UPD</span>

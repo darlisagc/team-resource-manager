@@ -86,7 +86,7 @@ export default function Dashboard() {
       name: m.name.split(' ')[0],
       timeOff: m.timeOffPercent || 0,
       events: m.eventPercent || 0,
-      work: m.utilization - (m.timeOffPercent || 0) - (m.eventPercent || 0),
+      work: Math.max(0, m.utilization - (m.timeOffPercent || 0) - (m.eventPercent || 0)),
       total: m.utilization,
       fill: getProgressHexColor(m.utilization, { isUtilization: true })
     }))
@@ -208,23 +208,27 @@ export default function Dashboard() {
             <div className="hologram-card p-6">
               <h3 className="font-orbitron text-sw-gold text-sm mb-4">CREW UTILIZATION</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={utilizationChartData} layout="vertical">
+                <BarChart data={utilizationChartData} layout="vertical" barSize={20}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,232,31,0.1)" />
-                  <XAxis type="number" domain={[0, 150]} stroke="#f0f0f0" />
-                  <YAxis type="category" dataKey="name" stroke="#f0f0f0" width={80} />
+                  <XAxis type="number" domain={[0, 150]} stroke="#f0f0f0" tickFormatter={(v) => `${v}%`} />
+                  <YAxis type="category" dataKey="name" stroke="#FF6B35" width={80} tick={{ fill: '#FF6B35' }} />
                   <Tooltip
-                    contentStyle={{ background: '#1a1a2e', border: '1px solid #FFE81F' }}
-                    formatter={(value, name) => [`${value.toFixed(1)}%`, name === 'timeOff' ? 'Time Off' : name === 'events' ? 'Events' : 'Work']}
+                    contentStyle={{ background: '#1a1a2e', border: '1px solid #FFE81F', borderRadius: '8px' }}
+                    labelStyle={{ color: '#FFE81F', fontFamily: 'Orbitron' }}
+                    formatter={(value, name) => {
+                      const label = name === 'timeOff' ? 'Time Off' : name === 'events' ? 'Events' : 'Work'
+                      return [`${value.toFixed(1)}%`, label]
+                    }}
                   />
-                  <Bar dataKey="timeOff" stackId="utilization" fill={COLORS.red} name="timeOff" />
-                  <Bar dataKey="events" stackId="utilization" fill={COLORS.purple} name="events" />
-                  <Bar dataKey="work" stackId="utilization" fill={COLORS.blue} name="work" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="timeOff" stackId="a" fill="#FF6B6B" name="timeOff" />
+                  <Bar dataKey="events" stackId="a" fill="#A855F7" name="events" />
+                  <Bar dataKey="work" stackId="a" fill="#4BD5EE" name="work" />
                 </BarChart>
               </ResponsiveContainer>
               <div className="flex justify-center gap-4 mt-4 text-xs">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.red}}></span> Time Off</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.purple}}></span> Events</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: COLORS.blue}}></span> Work Allocation</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: '#FF6B6B'}}></span> Time Off</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: '#A855F7'}}></span> Events</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded" style={{background: '#4BD5EE'}}></span> Work Allocation</span>
               </div>
             </div>
 
@@ -376,7 +380,7 @@ export default function Dashboard() {
               <BarChart data={capacityChartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,232,31,0.1)" />
                 <XAxis type="number" stroke="#f0f0f0" />
-                <YAxis type="category" dataKey="name" stroke="#f0f0f0" width={80} />
+                <YAxis type="category" dataKey="name" stroke="#FF6B35" width={80} tick={{ fill: '#FF6B35' }} />
                 <Tooltip
                   contentStyle={{ background: '#1a1a2e', border: '1px solid #FFE81F' }}
                 />

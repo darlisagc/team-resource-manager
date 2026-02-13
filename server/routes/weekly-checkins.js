@@ -282,6 +282,15 @@ router.post('/', (req, res) => {
     LIMIT 1
   `)
 
+  // Get Events key result for creating event initiatives
+  const eventKeyResult = getOne(`
+    SELECT kr.id FROM key_results kr
+    JOIN goals g ON kr.goal_id = g.id
+    WHERE g.title LIKE '%Events%'
+    ORDER BY kr.id
+    LIMIT 1
+  `)
+
   // Track processed items with their actual initiative IDs (for progress update later)
   const processedItems = []
 
@@ -331,6 +340,46 @@ router.post('/', (req, res) => {
         keyResultId = null
       }
 
+      // If this is an Event task with a name, create an actual initiative for it
+      if (item.is_event && item.notes && item.notes.trim() && eventKeyResult) {
+        // Calculate hours from time allocation (assuming 40h week)
+        const hoursWorked = Math.round(item.time_allocation_pct * 0.4)
+
+        // Create initiative under Events key result, assigned to this member
+        const initResult = insert('initiatives', {
+          name: item.notes.trim(),
+          description: `[Weekly Check-in] Event added ${week_start}`,
+          key_result_id: eventKeyResult.id,
+          owner_id: member.id,
+          status: 'active',
+          source: 'manual',
+          progress: 0,
+          actual_hours: hoursWorked,
+          category: 'event'
+        })
+        initiativeId = initResult.lastInsertRowid
+
+        // Create time entry for this week
+        insert('initiative_time_entries', {
+          initiative_id: initiativeId,
+          team_member_id: member.id,
+          week_start: week_start,
+          hours_worked: hoursWorked,
+          notes: `Weekly check-in: ${item.time_allocation_pct}%`
+        })
+
+        // Assign the initiative to this member
+        insert('initiative_assignments', {
+          initiative_id: initiativeId,
+          team_member_id: member.id,
+          role: 'Lead',
+          source: 'manual'
+        })
+
+        // Link to the new initiative instead of Events key result
+        keyResultId = null
+      }
+
       insert('weekly_checkin_items', {
         checkin_id: checkin.id,
         initiative_id: initiativeId,
@@ -355,6 +404,33 @@ router.post('/', (req, res) => {
   if (submit) {
     const affectedKeyResultIds = new Set()
     const affectedGoalIds = new Set()
+
+    // First pass: Update status to 'in-progress' for any item with hours logged
+    for (const item of processedItems) {
+      if (item.time_allocation_pct > 0) {
+        // Update initiative status to 'in-progress' if currently 'active' or 'draft'
+        if (item.initiative_id) {
+          const init = getOne('SELECT status, key_result_id FROM initiatives WHERE id = ?', [item.initiative_id])
+          if (init && (init.status === 'active' || init.status === 'draft')) {
+            update('initiatives', { status: 'in-progress', updated_at: new Date().toISOString() }, 'id = ?', [item.initiative_id])
+            // Also update parent key result to in-progress
+            if (init.key_result_id) {
+              const kr = getOne('SELECT status, goal_id FROM key_results WHERE id = ?', [init.key_result_id])
+              if (kr && (kr.status === 'active' || kr.status === 'draft' || kr.status === 'not-started')) {
+                update('key_results', { status: 'in-progress', updated_at: new Date().toISOString() }, 'id = ?', [init.key_result_id])
+              }
+            }
+          }
+        }
+        // Update key result status to 'in-progress' if directly logged against
+        if (item.key_result_id) {
+          const kr = getOne('SELECT status, goal_id FROM key_results WHERE id = ?', [item.key_result_id])
+          if (kr && (kr.status === 'active' || kr.status === 'draft' || kr.status === 'not-started')) {
+            update('key_results', { status: 'in-progress', updated_at: new Date().toISOString() }, 'id = ?', [item.key_result_id])
+          }
+        }
+      }
+    }
 
     // Use processedItems which has the actual initiative IDs (including newly created ones)
     for (const item of processedItems) {
