@@ -500,25 +500,20 @@
 
       <h3>Data Flow Architecture</h3>
       <div class="data-flow">
-┌─────────────────────────────────────────────────────────┐
-│                 INTERCONNECTED PAGES                     │
-│  (Share data from weekly_checkins table)                │
-│                                                          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │
-│  │Dashboard │◄─┤  Crew    │◄─┤  Goals   │◄─┤ Weekly   │ │
-│  │          │  │  Roster  │  │  Update  │  │ Check-in │ │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │
-└─────────────────────────────────────────────────────────┘
+<strong>INTERCONNECTED PAGES</strong> (Share data from weekly_checkins table):
 
-┌─────────────────────────────────────────────────────────┐
-│                   SEPARATE SYSTEM                        │
-│  (Planning data only affects Export)                    │
-│                                                          │
-│  ┌──────────┐              ┌──────────┐                 │
-│  │ Planning │ ────────────►│  Export  │                 │
-│  │ (FTE)    │  Estimations │          │                 │
-│  └──────────┘              └──────────┘                 │
-└─────────────────────────────────────────────────────────┘
+Dashboard &lt;-- Crew Roster &lt;-- Goals Update &lt;-- Weekly Check-in
+
+All these pages read/write from the same data source (weekly_checkins table).
+
+---
+
+<strong>SEPARATE SYSTEM</strong> (Planning data only affects Export):
+
+Planning (FTE) ----------&gt; Export
+               Estimations source
+
+Planning page estimates are independent and only flow to the Export page.
       </div>
     </section>
 
