@@ -112,6 +112,64 @@ export function listBackups() {
 }
 
 /**
+ * Restore database from a backup file
+ * @param {string} backupName - Name of the backup file to restore
+ * @returns {object} Result object with success status and message
+ */
+export function restoreBackup(backupName) {
+  try {
+    // Validate backup name
+    if (!backupName || !backupName.startsWith('database_backup_') || !backupName.endsWith('.sqlite')) {
+      return { success: false, message: 'Invalid backup filename' }
+    }
+
+    const backupPath = path.join(BACKUP_DIR, backupName)
+
+    // Check if backup file exists
+    if (!fs.existsSync(backupPath)) {
+      return { success: false, message: 'Backup file not found' }
+    }
+
+    // Verify it's a valid SQLite file
+    const header = Buffer.alloc(16)
+    const fd = fs.openSync(backupPath, 'r')
+    fs.readSync(fd, header, 0, 16, 0)
+    fs.closeSync(fd)
+
+    if (!header.toString().startsWith('SQLite format 3')) {
+      return { success: false, message: 'Invalid SQLite backup file' }
+    }
+
+    // Create a backup of current database before restore
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const preRestoreBackup = path.join(BACKUP_DIR, `pre_restore_${timestamp}.sqlite`)
+
+    if (fs.existsSync(DB_PATH)) {
+      fs.copyFileSync(DB_PATH, preRestoreBackup)
+      console.log(`[Backup] Created pre-restore backup: pre_restore_${timestamp}.sqlite`)
+    }
+
+    // Restore the backup
+    fs.copyFileSync(backupPath, DB_PATH)
+
+    const stats = fs.statSync(DB_PATH)
+    const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
+
+    console.log(`[Backup] ✓ Restored from: ${backupName} (${sizeMB} MB)`)
+
+    return {
+      success: true,
+      message: `Database restored from ${backupName}`,
+      preRestoreBackup: `pre_restore_${timestamp}.sqlite`,
+      sizeMB
+    }
+  } catch (error) {
+    console.error('[Backup] ✗ Failed to restore backup:', error.message)
+    return { success: false, message: error.message }
+  }
+}
+
+/**
  * Initialize the backup scheduler
  * Runs every Friday at 11:00 PM
  */
@@ -144,5 +202,6 @@ export function initBackupScheduler() {
 export default {
   createBackup,
   listBackups,
+  restoreBackup,
   initBackupScheduler
 }

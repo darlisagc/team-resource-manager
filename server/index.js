@@ -4,7 +4,7 @@ import compression from 'compression'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { authenticateToken } from './middleware/auth.js'
-import { initBackupScheduler, createBackup, listBackups } from './services/backupService.js'
+import { initBackupScheduler, createBackup, listBackups, restoreBackup } from './services/backupService.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -64,6 +64,24 @@ app.post('/api/backups', authenticateToken, (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Failed to create backup', error: error.message })
+  }
+})
+
+app.post('/api/backups/restore', authenticateToken, (req, res) => {
+  try {
+    const { backupName } = req.body
+    if (!backupName) {
+      return res.status(400).json({ message: 'backupName is required' })
+    }
+
+    const result = restoreBackup(backupName)
+    if (result.success) {
+      res.json(result)
+    } else {
+      res.status(400).json(result)
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to restore backup', error: error.message })
   }
 })
 
