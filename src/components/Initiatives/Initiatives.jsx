@@ -34,12 +34,12 @@ export default function Initiatives() {
     fetchQuarters()
     fetchTeamMembers()
     fetchGoalsAndKRs()
+    fetchTimeOff()
   }, [])
 
   useEffect(() => {
     if (selectedQuarter) {
       fetchInitiatives()
-      fetchTimeOff(selectedQuarter)
     }
   }, [selectedQuarter])
 
@@ -173,36 +173,75 @@ export default function Initiatives() {
     }
   }
 
-  const fetchTimeOff = async (quarter) => {
+  const fetchTimeOff = async () => {
     try {
-      let url = '/api/timeoff'
-
-      // Filter by quarter's date range only for specific quarters (Q1, Q2, etc.)
-      // For "Full Year" and "All (Overview)" - fetch all time off (no date filter)
-      if (quarter && quarter !== 'Full Year' && quarter !== 'All (Overview)') {
-        // Parse quarter string (e.g., "Q2 2026")
-        const match = quarter.match(/Q(\d)\s+(\d{4})/)
-        if (match) {
-          const quarterNum = parseInt(match[1])
-          const year = match[2]
-          const startMonth = (quarterNum - 1) * 3 + 1 // Q1=1, Q2=4, Q3=7, Q4=10
-          const endMonth = startMonth + 2
-          const endDay = [1, 3, 5, 7, 8, 10, 12].includes(endMonth) ? 31 : 30
-
-          const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01`
-          const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${endDay}`
-
-          url += `?start_date=${startDate}&end_date=${endDate}`
-        }
-      }
-      // For "Full Year" and "All (Overview)" - no date filter, show all time off
-
-      const res = await fetch(url, { headers: getAuthHeader() })
+      // Always fetch all time off - filtering is done in totals calculation
+      const res = await fetch('/api/timeoff', { headers: getAuthHeader() })
       const data = await res.json()
       setTimeOff(data)
     } catch (error) {
       console.error('Failed to fetch time off:', error)
     }
+  }
+
+  // PTO distribution percentages by quarter
+  const PTO_DISTRIBUTION = { Q1: 0.15, Q2: 0.25, Q3: 0.25, Q4: 0.35 }
+
+  // Calculate time off hours for a specific quarter
+  const calculateTimeOffForQuarter = (allTimeOff, quarter) => {
+    if (!quarter || quarter === 'Full Year' || quarter === 'All (Overview)') {
+      // Full year: return all time off
+      return allTimeOff.reduce((sum, t) => sum + (t.hours || 0), 0)
+    }
+
+    const match = quarter.match(/Q(\d)\s+(\d{4})/)
+    if (!match) return 0
+
+    const quarterNum = parseInt(match[1])
+    const year = match[2]
+    const startMonth = (quarterNum - 1) * 3 + 1
+    const endMonth = startMonth + 2
+    const endDay = [1, 3, 5, 7, 8, 10, 12].includes(endMonth) ? 31 : 30
+
+    const quarterStart = new Date(`${year}-${String(startMonth).padStart(2, '0')}-01`)
+    const quarterEnd = new Date(`${year}-${String(endMonth).padStart(2, '0')}-${endDay}`)
+
+    let totalHours = 0
+
+    // Separate time off by type
+    const bankHolidaysAndBirthdays = allTimeOff.filter(t =>
+      t.type === 'bank_holiday' || t.type === 'birthday'
+    )
+    const ptoAndOther = allTimeOff.filter(t =>
+      t.type !== 'bank_holiday' && t.type !== 'birthday'
+    )
+
+    // Bank holidays & birthdays: use actual dates
+    bankHolidaysAndBirthdays.forEach(t => {
+      const startDate = new Date(t.start_date)
+      const endDate = new Date(t.end_date)
+
+      // Check if overlaps with quarter
+      if (startDate <= quarterEnd && endDate >= quarterStart) {
+        // Calculate overlap
+        const overlapStart = startDate < quarterStart ? quarterStart : startDate
+        const overlapEnd = endDate > quarterEnd ? quarterEnd : endDate
+
+        const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1
+        const overlapDays = Math.ceil((overlapEnd - overlapStart) / (1000 * 60 * 60 * 24)) + 1
+
+        // Prorate hours
+        const proratedHours = totalDays > 0 ? (t.hours * overlapDays / totalDays) : t.hours
+        totalHours += proratedHours
+      }
+    })
+
+    // PTO & other: distribute by percentage
+    const totalPtoHours = ptoAndOther.reduce((sum, t) => sum + (t.hours || 0), 0)
+    const quarterKey = `Q${quarterNum}`
+    totalHours += totalPtoHours * (PTO_DISTRIBUTION[quarterKey] || 0.25)
+
+    return Math.round(totalHours)
   }
 
   const updateEstimate = async (initiativeId, hours) => {
@@ -531,7 +570,8 @@ export default function Initiatives() {
     const weeksForCapacity = isFullYearView ? WEEKS_PER_QUARTER * 4 : WEEKS_PER_QUARTER
     const totalWeeklyHours = teamMembers.reduce((sum, m) => sum + (m.effective_weekly_hours || m.weekly_hours || 40), 0)
     const totalCapacityHours = totalWeeklyHours * weeksForCapacity
-    const totalTimeOffHours = timeOff.reduce((sum, t) => sum + (t.hours || 0), 0)
+    // Calculate time off: bank holidays/birthdays by date, PTO by distribution (Q1:15%, Q2:25%, Q3:25%, Q4:35%)
+    const totalTimeOffHours = calculateTimeOffForQuarter(timeOff, selectedQuarter)
     const availableHours = totalCapacityHours - totalTimeOffHours
 
     return {
