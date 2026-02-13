@@ -4,6 +4,7 @@ import compression from 'compression'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { authenticateToken } from './middleware/auth.js'
+import { initBackupScheduler, createBackup, listBackups } from './services/backupService.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -41,6 +42,29 @@ app.get('/api/health', (req, res) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
   })
+})
+
+// Backup endpoints (protected)
+app.get('/api/backups', authenticateToken, (req, res) => {
+  try {
+    const backups = listBackups()
+    res.json({ backups, count: backups.length })
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to list backups', error: error.message })
+  }
+})
+
+app.post('/api/backups', authenticateToken, (req, res) => {
+  try {
+    const backupPath = createBackup()
+    if (backupPath) {
+      res.json({ message: 'Backup created successfully', path: backupPath })
+    } else {
+      res.status(500).json({ message: 'Failed to create backup' })
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to create backup', error: error.message })
+  }
 })
 
 // Public routes
@@ -109,4 +133,7 @@ app.listen(PORT, HOST, () => {
   ║                                                          ║
   ╚══════════════════════════════════════════════════════════╝
   `)
+
+  // Initialize backup scheduler (every Friday at 11 PM)
+  initBackupScheduler()
 })

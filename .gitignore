@@ -42,3 +42,7 @@ test-results/
 
 # OCR data
 *.traineddata
+
+# Database backups
+backups/
+*.backup_*
