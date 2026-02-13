@@ -184,14 +184,29 @@ export default function Initiatives() {
     }
   }
 
+  // PTO: 23 days per employee per year
+  const PTO_DAYS_PER_EMPLOYEE = 23
+  const HOURS_PER_DAY = 8
+
   // PTO distribution percentages by quarter
   const PTO_DISTRIBUTION = { Q1: 0.15, Q2: 0.25, Q3: 0.25, Q4: 0.35 }
 
   // Calculate time off hours for a specific quarter
-  const calculateTimeOffForQuarter = (allTimeOff, quarter) => {
+  // - Bank holidays & birthdays: from calendar (by actual dates)
+  // - PTO: fixed 23 days/employee/year, distributed by quarter percentage
+  const calculateTimeOffForQuarter = (allTimeOff, quarter, numEmployees) => {
+    // Calculate fixed PTO: 23 days × 8 hours × number of employees
+    const totalAnnualPtoHours = numEmployees * PTO_DAYS_PER_EMPLOYEE * HOURS_PER_DAY
+
+    // Get only bank holidays and birthdays from calendar
+    const bankHolidaysAndBirthdays = allTimeOff.filter(t =>
+      t.type === 'bank_holiday' || t.type === 'birthday'
+    )
+
     if (!quarter || quarter === 'Full Year' || quarter === 'All (Overview)') {
-      // Full year: return all time off
-      return allTimeOff.reduce((sum, t) => sum + (t.hours || 0), 0)
+      // Full year: all bank holidays/birthdays + full annual PTO
+      const calendarHours = bankHolidaysAndBirthdays.reduce((sum, t) => sum + (t.hours || 0), 0)
+      return Math.round(calendarHours + totalAnnualPtoHours)
     }
 
     const match = quarter.match(/Q(\d)\s+(\d{4})/)
@@ -208,15 +223,7 @@ export default function Initiatives() {
 
     let totalHours = 0
 
-    // Separate time off by type
-    const bankHolidaysAndBirthdays = allTimeOff.filter(t =>
-      t.type === 'bank_holiday' || t.type === 'birthday'
-    )
-    const ptoAndOther = allTimeOff.filter(t =>
-      t.type !== 'bank_holiday' && t.type !== 'birthday'
-    )
-
-    // Bank holidays & birthdays: use actual dates
+    // Bank holidays & birthdays: use actual dates from calendar
     bankHolidaysAndBirthdays.forEach(t => {
       const startDate = new Date(t.start_date)
       const endDate = new Date(t.end_date)
@@ -236,10 +243,9 @@ export default function Initiatives() {
       }
     })
 
-    // PTO & other: distribute by percentage
-    const totalPtoHours = ptoAndOther.reduce((sum, t) => sum + (t.hours || 0), 0)
+    // PTO: fixed 23 days/employee distributed by quarter percentage
     const quarterKey = `Q${quarterNum}`
-    totalHours += totalPtoHours * (PTO_DISTRIBUTION[quarterKey] || 0.25)
+    totalHours += totalAnnualPtoHours * (PTO_DISTRIBUTION[quarterKey] || 0.25)
 
     return Math.round(totalHours)
   }
@@ -570,8 +576,10 @@ export default function Initiatives() {
     const weeksForCapacity = isFullYearView ? WEEKS_PER_QUARTER * 4 : WEEKS_PER_QUARTER
     const totalWeeklyHours = teamMembers.reduce((sum, m) => sum + (m.effective_weekly_hours || m.weekly_hours || 40), 0)
     const totalCapacityHours = totalWeeklyHours * weeksForCapacity
-    // Calculate time off: bank holidays/birthdays by date, PTO by distribution (Q1:15%, Q2:25%, Q3:25%, Q4:35%)
-    const totalTimeOffHours = calculateTimeOffForQuarter(timeOff, selectedQuarter)
+    // Calculate time off:
+    // - Bank holidays & birthdays: from calendar (by actual dates)
+    // - PTO: 23 days/employee/year distributed (Q1:15%, Q2:25%, Q3:25%, Q4:35%)
+    const totalTimeOffHours = calculateTimeOffForQuarter(timeOff, selectedQuarter, teamMembers.length)
     const availableHours = totalCapacityHours - totalTimeOffHours
 
     return {
